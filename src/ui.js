@@ -63,7 +63,7 @@ function skillIcon(heroId, key) {
   return url;
 }
 // Battle spell and Regen icons.
-const SPELL_TINT = { blink: '#7a6ad0', smite: '#d08a2a', reap: '#b03a4a', cleanse: '#3ab0c2', sprint: '#4ab06a', aegis: '#c2a24a', stonegaze: '#8a8f99', regen: '#3aa860' };
+const SPELL_TINT = { blink: '#7a6ad0', smite: '#d08a2a', reap: '#b03a4a', cleanse: '#3ab0c2', sprint: '#4ab06a', aegis: '#c2a24a', stonegaze: '#8a8f99', regen: '#3aa860', azure: '#3a7ad0', ember: '#d0502a', lord: '#8a4ad0' };
 function spellIcon(id) {
   const key = 'spell:' + id;
   if (iconCache.has(key)) return iconCache.get(key);
@@ -85,6 +85,9 @@ function spellIcon(id) {
     case 'aegis': g.beginPath(); g.moveTo(0, -30); g.lineTo(26, -20); g.lineTo(22, 10); g.lineTo(0, 32); g.lineTo(-22, 10); g.lineTo(-26, -20); g.closePath(); g.fill(); g.fillStyle = A.shade(tint, -0.3); A.star(g, 0, -2, 12, 5, 5); g.fill(); break;
     case 'stonegaze': g.beginPath(); g.ellipse(0, 0, 32, 18, 0, 0, TAU); g.stroke(); g.beginPath(); g.arc(0, 0, 10, 0, TAU); g.fill(); g.lineWidth = 3; for (const a of [-2.4, -1.57, -0.7]) { g.beginPath(); g.moveTo(Math.cos(a) * 24, Math.sin(a) * 24 - 4); g.lineTo(Math.cos(a) * 36, Math.sin(a) * 36 - 6); g.stroke(); } break;
     case 'regen': g.fillRect(-8, -28, 16, 56); g.fillRect(-28, -8, 56, 16); break;
+    case 'azure': A.glow(g, 0, 0, 34, '#bfe0ff', 0.8); g.beginPath(); g.arc(0, 4, 16, 0, TAU); g.fill(); g.beginPath(); g.moveTo(-14, -2); g.quadraticCurveTo(0, -40, 14, -2); g.fill(); break;
+    case 'ember': g.beginPath(); g.moveTo(0, -32); g.quadraticCurveTo(26, -4, 18, 16); g.quadraticCurveTo(10, 32, 0, 32); g.quadraticCurveTo(-18, 30, -20, 12); g.quadraticCurveTo(-20, -6, -6, -14); g.quadraticCurveTo(-4, 0, 4, 2); g.quadraticCurveTo(10, -14, 0, -32); g.fill(); break;
+    case 'lord': g.beginPath(); g.moveTo(-28, 20); g.lineTo(-28, -14); g.lineTo(-14, 0); g.lineTo(0, -24); g.lineTo(14, 0); g.lineTo(28, -14); g.lineTo(28, 20); g.closePath(); g.fill(); break;
     default: g.beginPath(); g.arc(0, 0, 20, 0, TAU); g.fill();
   }
   g.restore();
@@ -475,6 +478,7 @@ function setupHud(view) {
   }
   $('heroPanel').hidden = !h;
   $('actions').hidden = !h;
+  resetStatus();
 }
 
 function updateHud(view) {
@@ -552,6 +556,7 @@ function updateHud(view) {
     set(rb.querySelector('span'), ch === 'regen' ? 'Regenerating' : 'Recalling');
     if (ch) setVar(rb, '--p', Math.min(100, ch === 'recall' ? h.recall.t / 3.5 * 100 : h.regenCh.t / D.REGEN.time * 100).toFixed(0) + '%');
   }
+  updateStatus(view, h);
   consumeEvents(view);
   if (hud.bannerQ.length && performance.now() > hud.bannerT) playBanner(hud.bannerQ.shift());
   if (hud.toastT && performance.now() > hud.toastT) { $('toast').hidden = true; hud.toastT = 0; }
@@ -639,6 +644,76 @@ function toast(itemId, type) {
   hud.toastT = performance.now() + 2200;
   LF.audio.play('gold', 0.5);
 }
+
+// ---------------------------------------------------------------------------
+// Status bar: icons for passives and buffs that are active right now, with a tooltip.
+// ---------------------------------------------------------------------------
+const BUFF_INFO = {
+  azure: ['Azure Wisp', '20% shorter cooldowns and much faster mana regeneration.'],
+  ember: ['Ember Brute', 'Your attacks slow the target and burn it for extra true damage.'],
+  lord: ['Lord\'s Blessing', 'Your whole team deals 15% more damage.'],
+};
+const itemWithPassive = id => D.ITEMS.find(it => it.passive && it.passive.id === id);
+function statusInfo(h, key, n) {
+  const [kind, id] = key.split(':');
+  if (kind === 'p') {
+    const p = h.def.passive;
+    const count = id === 'thirdshot' ? `${n}/3` : id === 'hotbarrels' ? `×${n}` : '';
+    const state = { ambush: 'Ready', riposte: 'Ready', thirdshot: n === 2 ? 'Next attack empowered' : '' }[id] || 'Active';
+    return { icon: A.portrait(h.def.id, 64, h.team), name: p.name, tag: 'Hero passive', state, text: p.desc, count, cls: 'passive' };
+  }
+  if (kind === 'i') {
+    const it = itemWithPassive(id === 'fury' ? 'fury' : id);
+    const state = id === 'fortify' ? 'Recharging' : id === 'echo' ? 'Ready' : id === 'gale' && n === 2 ? 'Next attack chains' : 'Active';
+    const count = id === 'gale' ? `${n}/3` : id === 'fury' ? `×${n}` : '';
+    return { icon: itemIcon(it.id), name: it.passive.name, tag: it.name, state, text: it.passive.text, count, cls: id === 'fortify' ? 'item cooling' : 'item' };
+  }
+  if (kind === 'k') {
+    const sk = h.def.skill[id];
+    return { icon: skillIcon(h.def.id, id), name: sk.name, tag: 'Skill effect', state: 'Active', text: sk.desc, count: '', cls: 'buff' };
+  }
+  if (id === 'sprint' || id === 'cleanse') {
+    const sp = D.SPELL[id];
+    return { icon: spellIcon(id), name: sp.name, tag: 'Battle spell', state: 'Active', text: sp.desc, count: '', cls: 'buff' };
+  }
+  if (id === 'blessing') {
+    const it = itemWithPassive('blessing');
+    return { icon: itemIcon(it.id), name: 'Blessing', tag: 'From an ally\'s ' + it.name, state: 'Active', text: '+20% move speed for 2 seconds.', count: '', cls: 'buff' };
+  }
+  const [name, text] = BUFF_INFO[id] || [id, ''];
+  return { icon: spellIcon(id), name, tag: 'Buff', state: 'Active', text, count: '', cls: 'buff' };
+}
+const stEls = new Map();
+function updateStatus(view, h) {
+  const bar = $('statusBar');
+  const list = h && !h.dead ? (view.mirror ? h.status || [] : LF.sim.statuses(h)) : [];
+  const seen = new Set();
+  for (const [key, n, left] of list) {
+    if (seen.has(key)) continue;
+    seen.add(key);
+    let el = stEls.get(key);
+    const info = statusInfo(h, key, n);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'st'; el.tabIndex = 0;
+      el.innerHTML = '<img alt=""><b class="st-n"></b><i class="st-t"></i><div class="st-tip"><small></small><strong></strong><em></em><span></span></div>';
+      el.querySelector('img').src = info.icon;
+      el.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') { const open = !el.classList.contains('open'); bar.querySelectorAll('.st.open').forEach(x => x.classList.remove('open')); el.classList.toggle('open', open); } });
+      stEls.set(key, el);
+    }
+    const slot = bar.children[seen.size - 1];
+    if (slot !== el) bar.insertBefore(el, slot || null);
+    el.className = 'st ' + info.cls + (el.classList.contains('open') ? ' open' : '');
+    set(el.querySelector('.st-n'), info.count);
+    set(el.querySelector('.st-t'), left > 0 ? String(Math.ceil(left)) : '');
+    set(el.querySelector('.st-tip small'), info.tag);
+    set(el.querySelector('.st-tip strong'), info.name);
+    set(el.querySelector('.st-tip em'), info.state + (left > 0 ? ` · ${Math.ceil(left)}s` : ''));
+    set(el.querySelector('.st-tip span'), info.text);
+  }
+  for (const [key, el] of stEls) if (!seen.has(key) && el.parentNode) el.remove();
+}
+function resetStatus() { for (const el of stEls.values()) el.remove(); stEls.clear(); }
 
 const WHY = { cooldown: 'Not ready yet', mana: 'Not enough mana', locked: 'Unlocks at level 4', dead: '', notarget: 'No enemy hero in range', rooted: 'Rooted', busy: '', full: 'Health is already full' };
 function denyReason(key, why) {

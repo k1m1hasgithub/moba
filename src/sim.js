@@ -1261,6 +1261,42 @@ function update(dt) {
   if (G.buyTimer <= 0) { G.buyTimer = 0.5; autoBuy(); }
 }
 
+// ---------------------------------------------------------------------------
+// Status effects shown on the HUD: hero passive, item passives and buffs that are active right now.
+// Each entry is [key, count, secondsLeft]; keys are listed in STATUS_KEYS for the network.
+// ---------------------------------------------------------------------------
+const STATUS_KEYS = ['']
+  .concat(D.HEROES.map(h => 'p:' + h.passive.id))
+  .concat(['i:gale', 'i:echo', 'i:fortify', 'i:fury'])
+  .concat(['b:azure', 'b:ember', 'b:lord', 'b:sprint', 'b:cleanse', 'b:blessing', 'k:s1', 'k:s2', 'k:ult']);
+function statuses(h) {
+  const out = [], t = G.t;
+  if (h.dead) return out;
+  const add = (key, n, left) => out.push([key, n || 0, Math.max(0, left || 0)]);
+  switch (h.def.passive.id) {
+    case 'thirdshot': if (h.shots > 0) add('p:thirdshot', h.shots); break;
+    case 'hotbarrels': if (h.stackT > t) add('p:hotbarrels', h.stacks, h.stackT - t); break;
+    case 'riposte': if (h.riposte) add('p:riposte'); break;
+    case 'ambush': if (t - h.lastDealt > 4) add('p:ambush'); break;
+    case 'bloodlust': case 'feral': if (t - h.lastDealt < 2) add('p:' + h.def.passive.id); break;
+    case 'granite': if (t - h.hitT < 2) add('p:granite'); break;
+    case 'hex': if (t - h.castT < 1.5) add('p:hex'); break;
+    case 'radiance': if (G.heroes.some(e => !e.dead && e.team !== h.team && seen(h.team, e) && dist(e, h) < 900 && e.hp < e.maxHp * 0.5)) add('p:radiance'); break;
+    case 'verdant': if (G.heroes.some(a => a !== h && !a.dead && a.team === h.team && dist(a, h) < 450)) add('p:verdant'); break;
+    default: break;
+  }
+  if (h.ip.gale) add('i:gale', h.galeN || 0);
+  if (h.ip.echo && !(h.echoT > t)) add('i:echo');
+  if (h.ip.fortify && h.fortifyT > t) add('i:fortify', 0, h.fortifyT - t);
+  for (const b of h.buffs) {
+    if (b.until <= t) continue;
+    const key = b.id === 'fury' ? 'i:fury' : ['s1', 's2', 'ult'].includes(b.id) ? 'k:' + b.id : 'b:' + b.id;
+    if (STATUS_KEYS.includes(key)) add(key, b.id === 'fury' ? h.furyN : 0, b.until - t);
+  }
+  if (G.teamBuff[h.team] > t) add('b:lord', 0, G.teamBuff[h.team] - t);
+  return out;
+}
+
 // Aiming info for a cast key: hero skills, the battle spell (aimed ones only) and Regen.
 const SELF = { type: 'buff' };
 function skillDef(h, key) {
@@ -1270,7 +1306,7 @@ function skillDef(h, key) {
 }
 
 LF.sim = {
-  createGame, skillDef, update, cast, startRecall, canBuy, purchasePlan, partCredit, cleanBuild, nextRecommended, nextPurchase, SELL_RATE, PART_CREDIT, pickAttackTarget, isTargetable, isStructure, validFoe, seen,
+  createGame, skillDef, statuses, STATUS_KEYS, update, cast, startRecall, canBuy, purchasePlan, partCredit, cleanBuild, nextRecommended, nextPurchase, SELL_RATE, PART_CREDIT, pickAttackTarget, isTargetable, isStructure, validFoe, seen,
   dist, gap, clamp, rand, moveToward, emptyInput, skillValue, hasBuff, enemyUnitsNear,
   get G() { return G; },
 };

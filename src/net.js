@@ -303,6 +303,8 @@ function encodeMain(G, seq, withStats) {
     b: G.structs.map(s => pctOf(s) * 16 + (s.target && s.target.kind === 'hero' ? s.target.seat + 1 : 0)),
     z: G.zones.slice(0, 10).map(z => [r(z.x), r(z.y), r(z.r), VIS_I[z.vis] || 0, z.team, r(z.t * 10), r((z.kind === 'circle' ? z.delay : z.dur) * 10), z.kind === 'circle' ? 0 : 1]),
     e: G.events.slice(-12).map(encodeEvent).filter(Boolean),
+    // Active passives and buffs per hero: [statusIndex, count, tenths of a second left] flattened.
+    ps: G.heroes.map(u => [].concat(...LF.sim.statuses(u).map(([k, n, l]) => [LF.sim.STATUS_KEYS.indexOf(k), n, r(l * 10)]))),
   };
   if (withStats) {
     g.st = G.heroes.map(u => [r(u.maxHp), r(u.maxMana), u.k, u.d, u.a, Math.floor(u.gold), u.cs, Math.floor(u.xp), packItems(u.items), r(u.goldTotal), r(u.ad), r(u.ap), r(u.armor), r(u.ms), Math.round(u.as * 100)]);
@@ -377,6 +379,11 @@ function applyMain(V, g) {
     h.recall = a[13] >= 0 ? { t: a[13] / 10 } : null;
     h.cds = { s1: a[14] / 10, s2: a[15] / 10, ult: a[16] / 10, sp: a[18] / 10, rg: a[19] / 10 };
     h.regenCh = a[17] >= 0 ? { t: a[17] / 10 } : null;
+  });
+  if (g.ps) g.ps.forEach((a, seat) => {
+    const h = V.heroes[seat], list = [];
+    for (let i = 0; i + 2 < a.length; i += 3) if (LF.sim.STATUS_KEYS[a[i]]) list.push([LF.sim.STATUS_KEYS[a[i]], a[i + 1], a[i + 2] / 10]);
+    if (h) h.status = list;
   });
   g.b.forEach((v, i) => {
     const s = V.structs[i];
@@ -462,6 +469,7 @@ function smooth(V, dt) {
     if (h.dead) h.respawn = Math.max(0, h.respawn - dt);
     if (h.recall) h.recall.t += dt;
     if (h.regenCh) h.regenCh.t += dt;
+    if (h.status) for (const s of h.status) if (s[2] > 0) s[2] = Math.max(0, s[2] - dt);
   }
   for (const m of V.minions) if (m.tx !== undefined) { m.x += (m.tx - m.x) * k; m.y += (m.ty - m.y) * k; }
   for (const m of V.monsters) { m.x += (m.tx - m.x) * k; m.y += (m.ty - m.y) * k; }
