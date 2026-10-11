@@ -692,16 +692,44 @@ function drawMinimap(view) {
     mctx.fillStyle = D.TEAMS[m.team].color;
     mctx.fillRect(m.x - 24, m.y - 24, 48, 48);
   }
-  for (const h of view.heroes) {
-    if (h.dead || !visible(h)) continue;
-    mctx.fillStyle = D.TEAMS[h.team].color;
-    mctx.beginPath(); mctx.arc(h.x, h.y, 95, 0, TAU); mctx.fill();
-    mctx.lineWidth = 26; mctx.strokeStyle = h === player ? '#7be38a' : '#0b120d'; mctx.stroke();
+  // Heroes as round face icons with a team-coloured ring; you are drawn last, on top.
+  const R = D.W * 0.042;
+  const heroes = view.heroes.filter(h => !h.dead && visible(h)).sort((a, b) => (a === player) - (b === player));
+  for (const h of heroes) {
+    const mine = h === player;
+    const r = mine ? R * 1.15 : R;
+    mctx.save();
+    mctx.translate(h.x, h.y);
+    if (cam.flip) mctx.transform(0, 1, 1, 0, 0, 0); // keep faces upright on the flipped map
+    mctx.beginPath(); mctx.arc(0, 0, r, 0, TAU);
+    mctx.fillStyle = D.TEAMS[h.team].deep; mctx.fill();
+    const img = faceImage(h.def.id);
+    if (img) {
+      mctx.save(); mctx.clip();
+      mctx.drawImage(img, -r, -r, r * 2, r * 2);
+      mctx.restore();
+    }
+    mctx.lineWidth = r * 0.24;
+    mctx.strokeStyle = mine ? '#7be38a' : D.TEAMS[h.team].color;
+    mctx.beginPath(); mctx.arc(0, 0, r, 0, TAU); mctx.stroke();
+    mctx.restore();
   }
   const vw = cw / scale, vh = ch / scale;
   const ex = cam.flip ? vh : vw, ey = cam.flip ? vw : vh;
   mctx.strokeStyle = 'rgba(255,255,255,0.8)'; mctx.lineWidth = 18;
   mctx.strokeRect(cam.x - ex / 2, cam.y - ey / 2, ex, ey);
+}
+// Hero face images for the minimap (loaded once from the generated portraits).
+const faces = new Map();
+function faceImage(id) {
+  let f = faces.get(id);
+  if (!f) {
+    f = { img: new Image(), ok: false };
+    f.img.onload = () => { f.ok = true; };
+    f.img.src = A.portrait(id, 64);
+    faces.set(id, f);
+  }
+  return f.ok ? f.img : null;
 }
 function minimapToWorld(px, py, w, h) {
   let x = px / w * D.W, y = py / h * D.H;
