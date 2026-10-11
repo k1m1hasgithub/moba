@@ -591,6 +591,188 @@ function drawLord(ctx, t, pose, C) {
   arm(30, 1.05 - atk * 1.3, false);
 }
 
+// ---------------------------------------------------------------------------
+// Small jungle camps: little monsters, facing +x, feet at (0,0)
+// ---------------------------------------------------------------------------
+function monsterEye(ctx, x, y, col, r) {
+  glow(ctx, x, y, r * 3.2, col, 0.85);
+  ctx.fillStyle = '#ffffff'; circle(ctx, x, y, r * 0.55); ctx.fill();
+}
+function fang(ctx, x, y, len, down) {
+  ctx.beginPath(); ctx.moveTo(x - 2, y); ctx.lineTo(x, y + (down ? len : -len)); ctx.lineTo(x + 2, y); ctx.closePath(); ctx.fill();
+}
+
+// Moss Beetle: a horned, moss-backed rhino beetle with snapping mandibles.
+function drawBeetle(ctx, t, pose, C) {
+  const w = pose.walk || 0, atk = pose.atk >= 0 ? Math.sin(pose.atk * Math.PI) : 0;
+  const bob = Math.sin(t * 3) * 1.2;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const near of [false, true]) {
+    ctx.strokeStyle = C(near ? '#22301a' : '#141d10'); ctx.lineWidth = 4;
+    for (let i = 0; i < 3; i++) {
+      const bx = -14 + i * 13, sw = Math.sin(t * 11 + i * 2.1 + (near ? 0 : 1.5)) * 5 * w;
+      const off = near ? 3 : -3;
+      ctx.beginPath(); ctx.moveTo(bx, -14 + off); ctx.lineTo(bx + 7 + sw, -22 + off); ctx.lineTo(bx + 11 + sw, -1 + off); ctx.stroke();
+    }
+    if (!near) {
+      // Abdomen shell
+      ctx.fillStyle = C('#2c5226'); ellipse(ctx, -6, -24 + bob, 28, 18); ctx.fill();
+      ctx.strokeStyle = OUTLINE; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = C('#1a3418'); ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(-32, -26 + bob); ctx.quadraticCurveTo(-6, -32 + bob, 18, -26 + bob); ctx.stroke();
+      ctx.fillStyle = C('#4f8a3c'); ellipse(ctx, -14, -33 + bob, 12, 5, -0.2); ctx.fill();
+      ctx.fillStyle = C('#7cbf4f'); for (const [mx, my] of [[-22, -36], [-6, -38], [6, -34]]) { ellipse(ctx, mx, my + bob, 5, 2.5); ctx.fill(); }
+      ctx.fillStyle = C('#d9cfae');
+      for (const sx of [-24, -12, 0]) { ctx.beginPath(); ctx.moveTo(sx - 4, -38 + bob); ctx.lineTo(sx - 1, -48 + bob); ctx.lineTo(sx + 3, -38 + bob); ctx.closePath(); ctx.fill(); }
+    }
+  }
+  // Head, horn and mandibles
+  const hx = 22 + atk * 6, hy = -24 + bob;
+  ctx.fillStyle = C('#1d3a1c'); ellipse(ctx, hx, hy, 12, 10); ctx.fill();
+  ctx.fillStyle = C('#e2d6b4');
+  ctx.beginPath(); ctx.moveTo(hx + 2, hy - 6); ctx.quadraticCurveTo(hx + 18, hy - 12, hx + 16, hy - 32 - atk * 4); ctx.quadraticCurveTo(hx + 10, hy - 14, hx - 4, hy - 8); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = C('#d0c49c'); ctx.lineWidth = 3;
+  const open = 0.25 + atk * 0.6;
+  for (const sg of [-1, 1]) {
+    ctx.beginPath(); ctx.moveTo(hx + 8, hy + 2 + sg * 3); ctx.quadraticCurveTo(hx + 20, hy + 2 + sg * (5 + open * 10), hx + 24, hy + 2 + sg * (1 - open * 4)); ctx.stroke();
+  }
+  monsterEye(ctx, hx + 6, hy - 3, '#b8ff5a', 2.4);
+}
+
+// Thorn Lizard: a crouched, frilled reptile with a thorny back and a snapping jaw.
+function drawLizard(ctx, t, pose, C) {
+  const w = pose.walk || 0, atk = pose.atk >= 0 ? Math.sin(pose.atk * Math.PI) : 0;
+  const sway = Math.sin(t * 5) * 4 * (0.4 + w);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  // Tail
+  for (let i = 10; i >= 0; i--) {
+    const k = i / 10;
+    const x = -16 - k * 40, y = -18 + k * 10 + Math.sin(t * 4 + k * 3) * 5 * k + sway * k;
+    ctx.fillStyle = C(i % 2 ? '#56701f' : '#62802a'); circle(ctx, x, y, 9 * (1 - k) + 2.5); ctx.fill();
+    if (i % 3 === 0 && i > 0) { ctx.fillStyle = C('#c94f2a'); ctx.beginPath(); ctx.moveTo(x - 3, y - 7 * (1 - k) - 1); ctx.lineTo(x, y - 14 * (1 - k) - 4); ctx.lineTo(x + 3, y - 7 * (1 - k) - 1); ctx.closePath(); ctx.fill(); }
+  }
+  // Legs
+  for (const [lx, dark] of [[-10, true], [12, true], [-4, false], [18, false]]) {
+    const sw = Math.sin(t * 10 + lx) * 4 * w;
+    ctx.strokeStyle = C(dark ? '#3e5418' : '#5a7426'); ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(lx, -18); ctx.lineTo(lx - 4 + sw, -8); ctx.lineTo(lx + 4 + sw, -1); ctx.stroke();
+    ctx.strokeStyle = C('#e8dcb8'); ctx.lineWidth = 1.6;
+    for (const o of [-2, 1, 4]) { ctx.beginPath(); ctx.moveTo(lx + 4 + sw, -1); ctx.lineTo(lx + 8 + sw + o, 1); ctx.stroke(); }
+  }
+  // Body
+  ctx.save(); ctx.translate(0, -26); ctx.rotate(-0.12);
+  ctx.fillStyle = C('#62802a'); ellipse(ctx, 0, 0, 26, 13); ctx.fill();
+  ctx.strokeStyle = OUTLINE; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = C('#cbb878'); ellipse(ctx, 4, 6, 18, 5); ctx.fill();
+  ctx.fillStyle = C('#4a6420'); for (let i = 0; i < 6; i++) { circle(ctx, -14 + i * 6, -3 + (i % 2) * 3, 1.8); ctx.fill(); }
+  ctx.fillStyle = C('#c94f2a');
+  for (let i = 0; i < 6; i++) { const x = -18 + i * 7; ctx.beginPath(); ctx.moveTo(x - 3, -11); ctx.lineTo(x + 1, -22 - (i % 2) * 4); ctx.lineTo(x + 4, -11); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+  // Neck, frill and head
+  const hx = 32 + atk * 8, hy = -40;
+  ctx.strokeStyle = C('#5a7426'); ctx.lineWidth = 11;
+  ctx.beginPath(); ctx.moveTo(18, -30); ctx.lineTo(hx - 8, hy + 4); ctx.stroke();
+  const fr = 0.7 + atk * 0.5;
+  ctx.fillStyle = C('#d0582c');
+  ctx.beginPath(); ctx.moveTo(hx - 6, hy);
+  for (let i = 0; i <= 6; i++) { const a = -2.6 + i * 0.55; const r = (i % 2 ? 17 : 22) * fr; ctx.lineTo(hx - 8 + Math.cos(a) * r, hy + Math.sin(a) * r); }
+  ctx.closePath(); ctx.fill();
+  ctx.save(); ctx.translate(hx - 2, hy + 3); ctx.rotate(0.15 + atk * 0.5);
+  ctx.fillStyle = C('#4e6820'); ctx.beginPath(); ctx.moveTo(0, -1); ctx.lineTo(20, 1); ctx.lineTo(18, 6); ctx.lineTo(0, 5); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = C('#f1ead2'); for (let i = 0; i < 3; i++) fang(ctx, 7 + i * 5, 0, 4, false);
+  ctx.restore();
+  ctx.fillStyle = C('#6c8a2e');
+  ctx.beginPath(); ctx.moveTo(hx - 10, hy + 2); ctx.quadraticCurveTo(hx - 6, hy - 10, hx + 6, hy - 8); ctx.lineTo(hx + 20, hy - 1); ctx.lineTo(hx + 19, hy + 4); ctx.lineTo(hx - 8, hy + 6); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = OUTLINE; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = C('#f1ead2'); for (let i = 0; i < 3; i++) fang(ctx, hx + 6 + i * 5, hy + 4, 4, true);
+  monsterEye(ctx, hx + 4, hy - 4, '#ffe36a', 2.2);
+  ctx.fillStyle = '#1a1a10'; ctx.fillRect(hx + 3.5, hy - 6, 1, 4);
+}
+
+// Shell Crab: a rock-shelled crab with one huge pincer and glowing eye stalks.
+function drawCrab(ctx, t, pose, C) {
+  const w = pose.walk || 0, atk = pose.atk >= 0 ? Math.sin(pose.atk * Math.PI) : 0;
+  const bob = Math.sin(t * 2.5) * 1.2;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  // Spindly legs
+  for (const near of [false, true]) {
+    ctx.strokeStyle = C(near ? '#9a4424' : '#6e2e18'); ctx.lineWidth = 3.5;
+    for (let i = 0; i < 4; i++) {
+      const bx = -18 + i * 9, sw = Math.sin(t * 12 + i * 1.7 + (near ? 0 : 2)) * 4 * w;
+      const off = near ? 4 : -4;
+      ctx.beginPath(); ctx.moveTo(bx, -16 + off); ctx.lineTo(bx - 10 + sw, -22 + off); ctx.lineTo(bx - 14 + sw, 0 + off * 0.3); ctx.stroke();
+    }
+  }
+  // Shell
+  ctx.fillStyle = C('#b4532a'); ellipse(ctx, -6, -24 + bob, 26, 16); ctx.fill();
+  ctx.strokeStyle = OUTLINE; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = C('#d26c3a'); ellipse(ctx, -12, -30 + bob, 12, 6, -0.2); ctx.fill();
+  ctx.fillStyle = C('#5f5650');
+  for (const [rx, ry, rr] of [[-20, -36, 6], [-6, -40, 7], [8, -34, 5]]) { poly(ctx, rx, ry + bob, rr, 5, rx); ctx.fill(); }
+  ctx.fillStyle = C('#e8e0d0'); for (const [bx, by] of [[-24, -26], [2, -24], [-10, -20]]) { circle(ctx, bx, by + bob, 2.2); ctx.fill(); }
+  // Eye stalks
+  ctx.strokeStyle = C('#8a3a1e'); ctx.lineWidth = 2.5;
+  for (const ex of [10, 16]) { ctx.beginPath(); ctx.moveTo(ex - 4, -30 + bob); ctx.lineTo(ex, -44 + bob + Math.sin(t * 3 + ex) * 2); ctx.stroke(); monsterEye(ctx, ex, -45 + bob + Math.sin(t * 3 + ex) * 2, '#7df3ff', 2.2); }
+  // Small claw (far) and big claw (near)
+  const claw = (cx, cy, size, open, col) => {
+    ctx.save(); ctx.translate(cx, cy);
+    ctx.fillStyle = C(col);
+    ctx.save(); ctx.rotate(-open); ellipse(ctx, size, -size * 0.25, size, size * 0.42); ctx.fill(); ctx.restore();
+    ctx.save(); ctx.rotate(open * 0.6); ellipse(ctx, size * 0.85, size * 0.25, size * 0.8, size * 0.3); ctx.fill(); ctx.restore();
+    ctx.fillStyle = C('#f0e2c8'); ctx.save(); ctx.rotate(-open); for (let i = 0; i < 3; i++) fang(ctx, size * 0.8 + i * size * 0.28, size * 0.12, 3, true); ctx.restore();
+    ctx.restore();
+  };
+  claw(14, -18 + bob, 9, 0.2 + atk * 0.4, '#8f3c1e');
+  ctx.strokeStyle = C('#a84a24'); ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(10, -22 + bob); ctx.lineTo(20 + atk * 6, -30 + bob - atk * 6); ctx.stroke();
+  claw(20 + atk * 6, -32 + bob - atk * 6, 15, 0.25 + atk * 0.7, '#c45c2c');
+}
+
+// Dusk Wolf: a hunched dire wolf with a spiked mane and burning red eyes.
+function drawWolf(ctx, t, pose, C) {
+  const w = pose.walk || 0, atk = pose.atk >= 0 ? Math.sin(pose.atk * Math.PI) : 0;
+  const bob = Math.sin(t * 2.4) * 1.2 + Math.abs(Math.sin(t * 9)) * 2 * w;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  glow(ctx, 0, -26, 50, '#8a5cff', 0.14);
+  ctx.translate(atk * 8, 0);
+  // Tail
+  ctx.fillStyle = C('#3a3248');
+  ctx.beginPath(); ctx.moveTo(-22, -30 + bob); ctx.quadraticCurveTo(-42, -40 + Math.sin(t * 5) * 4, -46, -26); ctx.quadraticCurveTo(-34, -24, -22, -22 + bob); ctx.fill();
+  // Legs
+  for (const [lx, dark, ph] of [[-16, true, 0], [12, true, 2], [-10, false, 3], [18, false, 1]]) {
+    const sw = Math.sin(t * 10 + ph) * 6 * w;
+    ctx.strokeStyle = C(dark ? '#2b2536' : '#3d3550'); ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(lx, -22 + bob); ctx.lineTo(lx + sw * 0.5, -10); ctx.lineTo(lx + sw, -1); ctx.stroke();
+    ctx.fillStyle = C('#e8e0d0'); for (const o of [2, 5]) { ctx.beginPath(); ctx.moveTo(lx + sw + o, -1); ctx.lineTo(lx + sw + o + 3, 1); ctx.lineTo(lx + sw + o, 1); ctx.closePath(); ctx.fill(); }
+  }
+  // Body
+  ctx.fillStyle = C('#4a4160'); ellipse(ctx, 0, -28 + bob, 24, 12); ctx.fill();
+  ctx.strokeStyle = OUTLINE; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = C('#5c5276'); ellipse(ctx, -4, -33 + bob, 14, 5); ctx.fill();
+  // Spiked mane
+  ctx.fillStyle = C('#241e30');
+  for (let i = 0; i < 7; i++) {
+    const x = -8 + i * 4.5, h = 10 + (i % 2) * 6 + Math.sin(t * 6 + i) * 1.5;
+    ctx.beginPath(); ctx.moveTo(x - 4, -36 + bob); ctx.lineTo(x + 2, -36 - h + bob); ctx.lineTo(x + 5, -35 + bob); ctx.closePath(); ctx.fill();
+  }
+  ctx.fillStyle = C('#a57cff'); for (const i of [2, 4]) { const x = -8 + i * 4.5; circle(ctx, x + 2, -48 + bob - (i % 2) * 6, 1.6); ctx.fill(); }
+  // Head with opening jaw
+  const hx = 26, hy = -36 + bob;
+  ctx.fillStyle = C('#2b2536');
+  ctx.beginPath(); ctx.moveTo(hx - 4, hy - 8); ctx.lineTo(hx - 1, hy - 22); ctx.lineTo(hx + 5, hy - 9); ctx.closePath(); ctx.fill();
+  ctx.save(); ctx.translate(hx + 2, hy + 4); ctx.rotate(0.1 + atk * 0.5);
+  ctx.fillStyle = C('#3d3550'); ctx.beginPath(); ctx.moveTo(0, -2); ctx.lineTo(18, 0); ctx.lineTo(16, 5); ctx.lineTo(0, 5); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = C('#f4efe2'); fang(ctx, 12, 0, 5, false); fang(ctx, 6, 0, 3, false);
+  ctx.restore();
+  ctx.fillStyle = C('#4a4160');
+  ctx.beginPath(); ctx.moveTo(hx - 10, hy + 2); ctx.quadraticCurveTo(hx - 6, hy - 12, hx + 6, hy - 9); ctx.lineTo(hx + 22, hy); ctx.lineTo(hx + 21, hy + 5); ctx.lineTo(hx - 6, hy + 7); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = OUTLINE; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = C('#1a1520'); circle(ctx, hx + 22, hy + 1, 2.2); ctx.fill();
+  ctx.fillStyle = C('#f4efe2'); fang(ctx, hx + 15, hy + 4, 6, true); fang(ctx, hx + 9, hy + 4, 4, true);
+  monsterEye(ctx, hx + 6, hy - 4, '#ff3a4a', 2.3);
+  if (atk > 0.1) glow(ctx, hx + 24, hy + 4, 18 * atk, '#ff6a7a', 0.5);
+}
+
 function drawMonster(ctx, m, t, pose) {
   const hurt = pose.hurt || 0;
   const C = c => (hurt > 0.02 ? mix(c, '#ffffff', hurt * 0.6) : c);
@@ -611,50 +793,10 @@ function drawMonster(ctx, m, t, pose) {
     case 'brute':
       drawRig(ctx, BRUTE_LOOK, pose);
       break;
-    case 'beetle': case 'crab': {
-      const shell = m.mtype === 'beetle' ? '#3f7a3a' : '#c46a3a';
-      ctx.strokeStyle = C(shade(shell, -0.4)); ctx.lineWidth = 3;
-      for (let i = 0; i < 3; i++) for (const sg of [-1, 1]) {
-        const lx = -10 + i * 10, sw = Math.sin(t * 8 + i + (sg > 0 ? 1 : 0)) * 3 * (pose.walk || 0);
-        ctx.beginPath(); ctx.moveTo(lx, -12); ctx.lineTo(lx + sw + sg * 4, -2); ctx.stroke();
-      }
-      ctx.fillStyle = C(shell); ellipse(ctx, 0, -18 + bob * 0.3, 26, 16); ctx.fill();
-      ctx.strokeStyle = OUTLINE; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.fillStyle = C(shade(shell, 0.25)); ellipse(ctx, -6, -23 + bob * 0.3, 12, 6); ctx.fill();
-      if (m.mtype === 'crab') {
-        ctx.fillStyle = C(shade(shell, -0.1));
-        for (const sg of [-1, 1]) { const open = pose.atk >= 0 ? Math.sin(pose.atk * Math.PI) * 0.6 : 0.1; ctx.save(); ctx.translate(22, -16 + sg * 8); ctx.rotate(sg * open); ellipse(ctx, 8, 0, 9, 5); ctx.fill(); ctx.restore(); }
-      } else {
-        ctx.strokeStyle = C('#d9e6a0'); ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(22, -20); ctx.quadraticCurveTo(34, -30, 32, -38); ctx.stroke();
-      }
-      ctx.fillStyle = '#111'; circle(ctx, 20, -21, 2.4); ctx.fill(); circle(ctx, 22, -14, 2.4); ctx.fill();
-      break;
-    }
-    case 'lizard': {
-      const sw = Math.sin(t * 6) * 4 * (0.3 + (pose.walk || 0));
-      ctx.fillStyle = C('#7a8f3a');
-      ctx.beginPath(); ctx.moveTo(-34, -10 + sw); ctx.quadraticCurveTo(-14, -26, 10, -22); ctx.quadraticCurveTo(30, -22, 34, -16); ctx.quadraticCurveTo(26, -6, 6, -8); ctx.quadraticCurveTo(-14, -6, -34, -10 + sw); ctx.fill();
-      ctx.strokeStyle = OUTLINE; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.fillStyle = C('#c94f2a');
-      for (let i = 0; i < 5; i++) { const x = -12 + i * 7; ctx.beginPath(); ctx.moveTo(x - 3, -22); ctx.lineTo(x, -31); ctx.lineTo(x + 3, -22); ctx.fill(); }
-      ctx.fillStyle = '#ffe36a'; circle(ctx, 26, -18, 2.5); ctx.fill();
-      break;
-    }
-    case 'wolf': {
-      const w = pose.walk || 0;
-      ctx.strokeStyle = C('#3b3446'); ctx.lineWidth = 5;
-      for (let i = 0; i < 4; i++) { const lx = i < 2 ? -14 + i * 5 : 10 + (i - 2) * 5; const sw = Math.sin(t * 9 + i * 1.6) * 5 * w; ctx.beginPath(); ctx.moveTo(lx, -14); ctx.lineTo(lx + sw, -1); ctx.stroke(); }
-      ctx.fillStyle = C('#4d4560'); ellipse(ctx, 0, -20 + bob * 0.4, 22, 11); ctx.fill();
-      ctx.strokeStyle = OUTLINE; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.fillStyle = C('#5d5574');
-      ctx.beginPath(); ctx.moveTo(-20, -24); ctx.quadraticCurveTo(-34, -30 + Math.sin(t * 5) * 3, -36, -20); ctx.quadraticCurveTo(-28, -20, -20, -18); ctx.fill();
-      ellipse(ctx, 22, -28 + bob * 0.4, 11, 9); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(18, -34); ctx.lineTo(20, -46); ctx.lineTo(25, -35); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(28, -26); ctx.lineTo(38, -24); ctx.lineTo(28, -21); ctx.fill();
-      ctx.fillStyle = '#ffcf5a'; circle(ctx, 26, -30, 2); ctx.fill();
-      break;
-    }
+    case 'beetle': ctx.scale(1.25, 1.25); drawBeetle(ctx, t, pose, C); break;
+    case 'lizard': ctx.scale(1.25, 1.25); drawLizard(ctx, t, pose, C); break;
+    case 'crab': ctx.scale(1.25, 1.25); drawCrab(ctx, t, pose, C); break;
+    case 'wolf': ctx.scale(1.25, 1.25); drawWolf(ctx, t, pose, C); break;
     case 'turtle': {
       const s = 1;
       ctx.fillStyle = C('#2f6e6a');

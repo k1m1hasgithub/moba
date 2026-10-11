@@ -396,7 +396,7 @@ function drawBars(u, player, k, view) {
   let w, h, y;
   if (isHero) { w = 76; h = 9; y = -98 - (u.air || 0); }
   else if (u.kind === 'minion') { w = 34; h = 4; y = u.mtype === 'siege' ? -54 : -48; }
-  else if (u.kind === 'monster') { if (u.hp >= u.maxHp && !u.boss) return; w = u.boss ? 120 : 64; h = u.boss ? 9 : 6; y = u.mtype === 'wisp' ? -100 : u.mtype === 'wyrm' ? -300 : u.boss ? -130 : -62; }
+  else if (u.kind === 'monster') { if (u.hp >= u.maxHp && !u.boss) return; w = u.boss ? 120 : 64; h = u.boss ? 9 : 6; y = u.mtype === 'wisp' ? -100 : u.mtype === 'wyrm' ? -300 : u.boss ? -130 : -80; }
   else { w = u.kind === 'core' ? 130 : 96; h = 9; y = u.kind === 'core' ? -150 : -132; }
   w *= k; h *= k;
   upright(u.x, u.y);
