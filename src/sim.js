@@ -1000,12 +1000,13 @@ function pickAttackTarget(h, radius) {
 
 function updateHero(h, dt) {
   if (h.human) processShop(h);
+  // Cooldowns (skills, battle spell, Regen) keep ticking while dead.
+  for (const k of ['s1', 's2', 'ult', 'sp', 'rg']) h.cds[k] = Math.max(0, h.cds[k] - dt);
   if (h.dead) {
     h.respawn -= dt;
     if (h.respawn <= 0) respawnHero(h);
     return;
   }
-  for (const k of ['s1', 's2', 'ult', 'sp', 'rg']) h.cds[k] = Math.max(0, h.cds[k] - dt);
   if (h.regenCh) {
     h.regenCh.t += dt;
     heal(h, h.maxHp * D.REGEN.heal * dt);
