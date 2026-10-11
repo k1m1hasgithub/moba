@@ -712,6 +712,7 @@ class Party {
       if (Array.isArray(inp.mt) && inp.ms > st.m) { st.m = inp.ms; I.moveTo = { x: clamp(+inp.mt[0] || 0, 0, D.W), y: clamp(+inp.mt[1] || 0, 0, D.H) }; }
       if (inp.ts > st.t) { st.t = inp.ts; const t = resolveTarget(G, inp.tg | 0); I.target = t ? t.id : 0; }
       if (inp.r > st.r) { st.r = inp.r; I.recall = true; }
+      if (inp.ab !== undefined && !!inp.ab !== h.autoBuy) I.autoBuy = !!inp.ab;
       if (Array.isArray(inp.pn) && inp.pn[0] > (st.pn || 0)) { st.pn = inp.pn[0]; I.pin = D.ITEMS[inp.pn[1]] ? D.ITEMS[inp.pn[1]].id : ''; }
       if (inp.bd !== undefined) {
         const key = JSON.stringify(inp.bd);

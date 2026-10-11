@@ -89,7 +89,7 @@ function makeHero(s, seat) {
 }
 
 function emptyInput() {
-  return { mv: null, moveTo: null, attack: false, target: 0, casts: [], recall: false, shop: [], pin: undefined };
+  return { mv: null, moveTo: null, attack: false, target: 0, casts: [], recall: false, shop: [], pin: undefined, autoBuy: undefined };
 }
 
 // Recompute item and level stats. Temporary buffs are applied every tick in applyBuffs.
@@ -1206,26 +1206,27 @@ function nextPurchase(h, target) {
 function processShop(h) {
   const I = h.input;
   if (I.pin !== undefined) { h.pin = D.ITEM[I.pin] ? I.pin : null; I.pin = undefined; }
+  if (I.autoBuy !== undefined) { h.autoBuy = !!I.autoBuy; I.autoBuy = undefined; }
   while (I.shop.length) {
     const op = I.shop.shift();
     if (op.op === 'buy') buyItem(h, op.id);
     else if (op.op === 'sell') sellItem(h, op.id);
   }
 }
-// Bots buy their build piece by piece. Players buy by hand, except for the one item they may pin:
-// it is bought the moment they can afford it.
+// A pinned item is bought the moment it's affordable. With auto-buy on (always for bots, a switch for
+// players) the whole build is bought piece by piece; otherwise players confirm each purchase themselves.
 function autoBuy() {
   for (const h of G.heroes) {
-    if (h.autoBuy) {
-      for (let n = 0; n < 4; n++) {
-        const next = nextPurchase(h);
-        if (!next || !buyItem(h, next.id)) break;
-      }
-    } else if (h.pin && !h.dead && !canBuy(h, h.pin)) {
+    if (h.pin && !h.dead && !canBuy(h, h.pin)) {
       const id = h.pin;
       h.pin = null;
       buyItem(h, id);
       ev('pinbuy', { seat: h.seat, item: id });
+    }
+    if (!h.autoBuy) continue;
+    for (let n = 0; n < 4; n++) {
+      const next = nextPurchase(h);
+      if (!next || !buyItem(h, next.id)) break;
     }
   }
 }

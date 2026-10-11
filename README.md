@@ -65,13 +65,19 @@ buying piece by piece costs a little more than saving up. A Tier 3 piece crafted
 gone; from then on only the Tier 2 item counts toward the Tier 1 price. Many components feed more than one
 Tier 1 item (a Longsword goes into five of them), but each craft consumes its parts, so you buy them again
 for the next item. Unique attributes and passives count once even if you own two copies.
-Each hero has a recommended build. When you can afford its next piece, a buy prompt appears in the
-top-right corner: click **Buy** to confirm (nothing is bought without your click). You can also pin **one**
-item in the shop ("Auto-buy when affordable"); it is bought automatically the moment you have the gold.
+Each hero has a recommended build (or your own, see below). Two ways to buy it:
+
+- **Auto-buy my build** (switch in the shop, off by default): the whole build is bought piece by piece as
+  soon as you can afford each part.
+- With auto-buy off, a **buy prompt** appears in the top-right corner when you can afford the next piece:
+  click **Buy** to confirm. Nothing is bought without your click.
+
+You can also pin **one** extra item in the shop ("Auto-buy when affordable"); it is bought the moment you
+have the gold, whether auto-buy is on or off.
 
 **Your own builds**: on the hero select screen, in a lobby or from the in-game shop, "Customize build"
 opens the full item list. Pick up to six items in the order you want them (one pair of boots); the build is
-saved per hero in your browser, and the buy prompt and quick-buy button follow it instead of the recommended
+saved per hero in your browser, and auto-buy, the buy prompt and the quick-buy button follow it instead of the recommended
 one. It works in multiplayer too: your build travels to the host with your inputs.
 
 ## Heroes
