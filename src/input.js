@@ -15,6 +15,7 @@ const S = {
   target: null, targetSeq: 0, targetDirty: false,
   recallSeq: 0, recallDirty: false,
   click: null,
+  shop: [], netShop: [], shopSeq: 0, autoBuy: (() => { try { return localStorage.getItem('lf-autobuy') === '1'; } catch (e) { return false; } })(),
 };
 let canvas, ui = {};
 
@@ -96,6 +97,7 @@ function onKeyDown(e) {
   if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) { S.keys.add(k); e.preventDefault(); return; }
   if (k === ' ' || k === 'j') { S.attackKey = true; e.preventDefault(); return; }
   if (k === 'b') { recall(); return; }
+  if (k === 'p') { if (LF.ui) LF.ui.toggleShop(); return; }
   const sk = KEY_TO_SKILL[k];
   if (sk) { S.aim = { key: sk, src: 'key' }; ui.skills[sk].classList.add('aiming'); e.preventDefault(); }
 }
@@ -311,12 +313,14 @@ function applyLocal(h) {
   if (S.targetDirty) { I.target = S.target ? S.target.id : 0; S.targetDirty = false; }
   if (S.recallDirty) { I.recall = true; S.recallDirty = false; }
   while (S.casts.length) I.casts.push(S.casts.shift());
+  while (S.shop.length) I.shop.push(S.shop.shift());
+  if (S.autoBuy !== h.autoBuy) I.autoBuy = S.autoBuy;
 }
 
 // Build the compact input object a client sends to the host.
 function toNet() {
   const mv = currentMove();
-  S.casts.length = 0;
+  S.casts.length = 0; S.shop.length = 0;
   S.moveDirty = false; S.targetDirty = false; S.recallDirty = false;
   return {
     mv: mv ? [Math.round(mv.x * 100), Math.round(mv.y * 100)] : 0,
@@ -325,7 +329,21 @@ function toNet() {
     tg: LF.net.targetRef(S.target), ts: S.targetSeq,
     r: S.recallSeq,
     c: S.netCasts.slice(),
+    sh: S.netShop.slice(),
+    ab: S.autoBuy ? 1 : 0,
   };
+}
+
+// Shop orders go through the same input path as everything else (local hero or host).
+function shop(op, id) {
+  S.shopSeq++;
+  S.shop.push({ op, id });
+  S.netShop.push([S.shopSeq, op === 'sell' ? 2 : 1, D.ITEM_INDEX[id]]);
+  if (S.netShop.length > 6) S.netShop.shift();
+}
+function setAutoBuy(on) {
+  S.autoBuy = !!on;
+  try { localStorage.setItem('lf-autobuy', on ? '1' : '0'); } catch (e) { /* ignore */ }
 }
 
 function setView(v) { S.view = v; }
@@ -334,7 +352,7 @@ function enable(on) {
   if (!on) { S.keys.clear(); S.attackKey = S.attackBtn = false; S.aim = null; S.joy = null; S.steer = false; S.casts.length = 0; }
 }
 function reset() {
-  S.moveTo = null; S.target = null; S.casts.length = 0; S.netCasts.length = 0; S.castSeq = 0; S.moveSeq = 0; S.targetSeq = 0; S.recallSeq = 0;
+  S.moveTo = null; S.target = null; S.casts.length = 0; S.netCasts.length = 0; S.shop.length = 0; S.netShop.length = 0; S.shopSeq = 0; S.castSeq = 0; S.moveSeq = 0; S.targetSeq = 0; S.recallSeq = 0;
   S.moveDirty = S.targetDirty = S.recallDirty = false; S.aim = null; S.click = null;
 }
 
@@ -349,5 +367,5 @@ function aimState() {
   return S.aim.x !== undefined ? S.aim : null;
 }
 
-LF.input = { init, applyLocal, toNet, setView, enable, reset, aimState, hoverTarget, get click() { return S.click; }, state: S };
+LF.input = { init, applyLocal, toNet, setView, enable, reset, shop, setAutoBuy, aimState, hoverTarget, get click() { return S.click; }, state: S };
 })(window.LF);

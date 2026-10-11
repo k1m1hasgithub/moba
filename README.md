@@ -31,10 +31,14 @@ Three transports share the same code (`src/net.js`), picked automatically:
 | Attack | Hold `Space`, or click an enemy | Attack button |
 | Skills | Hold `Q` / `E` / `R` to aim at the cursor, release to cast | Drag a skill button to aim, tap to auto-aim |
 | Recall | `B` | Home button |
+| Shop | `P` | Bag button |
 | Scoreboard | `Tab` | List button |
 | Mute sound | `M` | Sound button (menu, pause menu or in-game) |
 
-The ultimate unlocks at level 4. Items are bought automatically from each hero's build.
+The ultimate unlocks at level 4.
+
+**Shop**: press `P` (or the bag button) to buy and sell items anywhere. Each hero has a recommended build;
+the "Next" line on your hero panel buys its next item in one click, or turn on auto-buy in the shop.
 
 ## Heroes
 
@@ -46,11 +50,11 @@ The ultimate unlocks at level 4. Items are bought automatically from each hero's
 | Gold Lane | Bottom | Kestra (archer), Dax (gunslinger) |
 | Roam | Follows a lane | Gorr (tank), Mira (healer) |
 
-Every hero has a passive, two skills and an ultimate.
+Every hero has a passive, two skills and an ultimate. The jungle has buff camps (Azure Wisp, Ember Brute),
+small camps, and two river bosses: the Tidewarden (2:00) and the Elder Wyrm (8:00).
 
 **Bushes** line the lanes and the jungle. A hero inside one is invisible to the enemy team (and can't be
-targeted) until an enemy walks into the same bush or the hidden hero deals damage. Area skills still hit. The jungle has buff camps (Azure Wisp, Ember Brute),
-small camps, and two river bosses: the Tidewarden (2:00) and the Elder Wyrm (8:00).
+targeted) until an enemy walks into the same bush or the hidden hero deals damage. Area skills still hit.
 
 ## Code
 

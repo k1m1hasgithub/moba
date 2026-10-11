@@ -83,6 +83,7 @@ function enterGame(v) {
   LF.ui.show(null, false);
   $('hud').hidden = false;
   $('scoreboard').hidden = true;
+  $('shop').hidden = true;
   LF.render.resize();
   LF.ui.setupHud(v);
   endShown = false; endTimer = 0; paused = false; acc = 0;
@@ -203,11 +204,13 @@ function pause(on) {
 }
 function quit() {
   LF.input.enable(false);
+  $('shop').hidden = true;
   $('hud').hidden = true;
   toMenu();
 }
 function escape() {
   if (!$('scoreboard').hidden) { $('scoreboard').hidden = true; return; }
+  if (!$('shop').hidden) { $('shop').hidden = true; return; }
   if (inGame() && !endShown) { pause($('pause').hidden); return; }
   if (!$('home').hidden || inGame()) return;
   if (!$('lobby').hidden) return;

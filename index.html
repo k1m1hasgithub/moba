@@ -23,6 +23,7 @@
         <div class="score-team theirs"><span class="score-n" id="killsTheirs">0</span></div>
       </div>
       <div class="hud-buttons">
+        <button class="hud-btn" id="btnShop" type="button" aria-label="Shop" title="Shop (P)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7h12l-1 10H5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7V5.5a3 3 0 016 0V7" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
         <button class="hud-btn" id="btnScore" type="button" aria-label="Scoreboard" title="Scoreboard (Tab)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4h14M3 10h14M3 16h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
         <button class="hud-btn" id="btnSound" type="button" aria-label="Sound" title="Sound (M)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8v4h3l4 3V5L6 8H3z" fill="currentColor"/><path class="wave" d="M13 7a4 4 0 010 6M15 5a7 7 0 010 10" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/><path class="cross" d="M13 7l5 6M18 7l-5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
         <button class="hud-btn" id="btnMenu" type="button" aria-label="Menu" title="Menu (Esc)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4h3v12H6zM11 4h3v12h-3z" fill="currentColor"/></svg></button>
@@ -40,7 +41,7 @@
         <div class="bar hp"><i id="hpFill"></i><span id="hpText"></span></div>
         <div class="bar mp"><i id="mpFill"></i><span id="mpText"></span></div>
         <div class="items" id="items"></div>
-        <div class="next-item" id="nextItem"></div>
+        <button class="next-item" id="nextItem" type="button"></button>
       </div>
     </div>
 
@@ -54,6 +55,31 @@
       <button class="act act-small" id="btnRecall" type="button" aria-label="Recall to base"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 6v12H5V9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 21v-6h4v6" fill="currentColor"/></svg><kbd>B</kbd></button>
     </div>
     <div class="recall-bar" id="recallBar" hidden><span>Recalling</span><i></i></div>
+  </div>
+
+  <!-- ============ Shop ============ -->
+  <div id="shop" class="overlay dim" hidden>
+    <div class="sheet shop-sheet" role="dialog" aria-label="Shop">
+      <header class="sheet-head shop-head">
+        <h2>Shop</h2>
+        <span class="gold" id="shopGold">0</span>
+        <label class="toggle" for="autoBuy"><input type="checkbox" id="autoBuy"><span>Auto-buy recommended build</span></label>
+        <button class="btn ghost" id="shopClose" type="button">Close <kbd>P</kbd></button>
+      </header>
+      <section class="rec">
+        <div class="rec-text"><strong>Recommended for <span id="recHero"></span></strong><p id="recNote"></p></div>
+        <div class="rec-items" id="recItems"></div>
+        <button class="btn primary" id="buyNext" type="button">Buy next</button>
+      </section>
+      <div class="shop-grid">
+        <div class="shop-left">
+          <div class="role-tabs" id="shopTabs" role="tablist"></div>
+          <div class="shop-items" id="shopItems"></div>
+        </div>
+        <div class="shop-detail" id="shopDetail"></div>
+      </div>
+      <div class="shop-bag"><span class="eyebrow">Your items</span><div class="bag" id="shopBag"></div><span class="hint">Selling gives back 60% of the price.</span></div>
+    </div>
   </div>
 
   <!-- ============ Scoreboard ============ -->
@@ -106,6 +132,7 @@
           <p class="dtitle" id="dTitle"></p>
           <div class="stats" id="dStats"></div>
           <ul class="skills" id="dSkills"></ul>
+          <div class="dbuild" id="dBuild"></div>
         </div>
       </div>
     </div>

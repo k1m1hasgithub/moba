@@ -162,7 +162,7 @@ const MT = ['melee', 'caster', 'siege'];
 const MONS = Object.keys(D.MONSTERS);
 const KEYS = ['', 's1', 's2', 'ult'];
 const TAGS = ['', 'First Blood', 'Double Kill', 'Triple Kill', 'Mega Kill', 'Wipe Out', 'Shutdown', 'Killing Spree', 'Unstoppable', 'Legendary'];
-const EV = ['', 'kill', 'tower', 'monster', 'fx', 'level', 'gold', 'cast', 'recalled', 'respawn', 'buy', 'ace', 'gameover', 'spawn', 'recall', 'heal'];
+const EV = ['', 'kill', 'tower', 'monster', 'fx', 'level', 'gold', 'cast', 'recalled', 'respawn', 'buy', 'ace', 'gameover', 'spawn', 'recall', 'heal', 'sell'];
 const EV_I = Object.fromEntries(EV.map((v, i) => [v, i]));
 
 const pctOf = u => clamp(Math.round(u.hp / u.maxHp * 100), 0, 100);
@@ -245,7 +245,7 @@ function encodeEvent(e) {
     case 'gold': return [e.seq, i, e.seat, q(e.amt), q(e.x), q(e.y)];
     case 'cast': return [e.seq, i, e.seat, KEYS.indexOf(e.key)];
     case 'recalled': case 'respawn': case 'recall': return [e.seq, i, e.seat];
-    case 'buy': return [e.seq, i, e.seat, D.ITEM_INDEX[e.item]];
+    case 'buy': case 'sell': return [e.seq, i, e.seat, D.ITEM_INDEX[e.item]];
     case 'ace': return [e.seq, i, e.team];
     case 'gameover': return [e.seq, i, e.winner];
     case 'spawn': return [e.seq, i, MONS.indexOf(e.mtype)];
@@ -264,7 +264,7 @@ function decodeEvent(a) {
     case 'gold': return { seq, type, seat: a[2], amt: a[3], x: a[4], y: a[5] };
     case 'cast': return { seq, type, seat: a[2], key: KEYS[a[3]] };
     case 'recalled': case 'respawn': case 'recall': return { seq, type, seat: a[2] };
-    case 'buy': return { seq, type, seat: a[2], item: D.ITEMS[a[3]].id };
+    case 'buy': case 'sell': return { seq, type, seat: a[2], item: D.ITEMS[a[3]].id };
     case 'ace': return { seq, type, team: a[2] };
     case 'gameover': return { seq, type, winner: a[2] };
     case 'spawn': return { seq, type, mtype: MONS[a[2]] };
@@ -632,7 +632,7 @@ class Party {
   }
   publish(G) {
     this.seq++;
-    const g = encodeMain(G, this.seq, this.seq % 6 === 1 || G.over);
+    const g = encodeMain(G, this.seq, this.seq % 3 === 1 || G.over);
     this.room.presence({ g });
     this.world.presence({ w: encodeWorld(G, this.seq) });
   }
@@ -654,19 +654,28 @@ class Party {
       if (!h.human || h.local) continue;
       const pr = byPeer.get(h.peer);
       if (!pr) {
-        if (h.human) { h.human = false; h.diff = this.L.diff; }
+        if (h.human) { h.human = false; h.diff = this.L.diff; h.autoBuy = true; }
         continue;
       }
       const inp = pr.inp;
       if (!inp || typeof inp !== 'object') continue;
       let st = this.remoteState.get(h.seat);
-      if (!st) { st = { c: 0, m: 0, t: 0, r: 0 }; this.remoteState.set(h.seat, st); }
+      if (!st) { st = { c: 0, m: 0, t: 0, r: 0, s: 0 }; this.remoteState.set(h.seat, st); }
       const I = h.input;
       I.mv = Array.isArray(inp.mv) ? { x: clamp(+inp.mv[0] / 100 || 0, -1, 1), y: clamp(+inp.mv[1] / 100 || 0, -1, 1) } : null;
       I.attack = !!inp.a;
       if (Array.isArray(inp.mt) && inp.ms > st.m) { st.m = inp.ms; I.moveTo = { x: clamp(+inp.mt[0] || 0, 0, D.W), y: clamp(+inp.mt[1] || 0, 0, D.H) }; }
       if (inp.ts > st.t) { st.t = inp.ts; const t = resolveTarget(G, inp.tg | 0); I.target = t ? t.id : 0; }
       if (inp.r > st.r) { st.r = inp.r; I.recall = true; }
+      if (inp.ab !== undefined && !!inp.ab !== h.autoBuy) I.autoBuy = !!inp.ab;
+      if (Array.isArray(inp.sh)) {
+        for (const o of inp.sh) {
+          if (!Array.isArray(o) || !(o[0] > st.s)) continue;
+          st.s = o[0];
+          const it = D.ITEMS[o[2]];
+          if (it) I.shop.push({ op: o[1] === 2 ? 'sell' : 'buy', id: it.id });
+        }
+      }
       if (Array.isArray(inp.c)) {
         for (const c of inp.c) {
           if (!Array.isArray(c) || !(c[0] > st.c)) continue;

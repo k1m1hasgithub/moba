@@ -135,6 +135,7 @@ function init() {
   $('homeRoster').innerHTML = D.HEROES.map(h => `<img src="${A.portrait(h.id, 64)}" alt="">`).join('');
   $('howRoles').innerHTML = D.ROLES.map(r => `<dt>${r.name}</dt><dd>${r.desc} ${heroNames(r.id)}</dd>`).join('');
   $('scoreClose').addEventListener('click', () => showScore(false));
+  initShop();
   $('btnScore').addEventListener('click', () => showScore($('scoreboard').hidden));
   for (const id of ['btnSound', 'soundToggle', 'pauseSound']) $(id).addEventListener('click', toggleSound);
   window.addEventListener('keydown', e => {
@@ -212,6 +213,7 @@ function renderDetail(id) {
     meter('Range', s.range / 400) + meter('Mobility', (s.ms - 250) / 55 + (h.skills.some(k => ['dash', 'leap', 'blink'].includes(k.type)) ? 0.3 : 0));
   const sk = h.skills.map(k => `<li><img src="${skillIcon(id, k.key)}" alt=""><div><strong>${k.key === 'ult' ? 'Ultimate · ' : ''}${esc(k.name)}<em>${k.cd}s · ${k.mana} mana</em></strong><p>${esc(k.desc)}</p></div></li>`).join('');
   $('dSkills').innerHTML = `<li><img src="${A.portrait(id, 40)}" alt=""><div><strong>Passive · ${esc(h.passive.name)}</strong><p>${esc(h.passive.desc)}</p></div></li>` + sk;
+  $('dBuild').innerHTML = `<p class="eyebrow">Recommended build</p><div class="itemrow">${h.build.map(i => `<img src="${itemIcon(i)}" alt="${esc(D.ITEM[i].name)}" title="${esc(D.ITEM[i].name)}: ${esc(D.ITEM[i].text)}">`).join('')}</div><p>${esc(h.buildNote)}</p>`;
 }
 function startShowcase() {
   cancelAnimationFrame(sel.raf);
@@ -403,16 +405,21 @@ function updateHud(view) {
       hud.cache.set('items', itemsKey);
       $('items').innerHTML = Array.from({ length: 6 }, (_, i) => h.items[i] ? `<div class="slot" title="${esc(D.ITEM[h.items[i]].name)}: ${esc(D.ITEM[h.items[i]].text)}"><img src="${itemIcon(h.items[i])}" alt=""></div>` : '<div class="slot"></div>').join('');
     }
-    const next = h.def.build.find(id => !h.items.includes(id));
+    const next = LF.sim.nextRecommended(h);
     const ni = $('nextItem');
     if (next && h.items.length < 6) {
       const it = D.ITEM[next];
-      const key = next + Math.floor(h.gold / 20);
+      const ok = h.gold >= it.cost;
+      const key = next + Math.floor(h.gold / 20) + ok;
       if (hud.cache.get('next') !== key) {
         hud.cache.set('next', key);
-        ni.innerHTML = `<span>Next: ${esc(it.name)}</span><i style="--p:${Math.min(100, h.gold / it.cost * 100).toFixed(0)}%"><b></b></i><span>${it.cost}</span>`;
+        ni.classList.toggle('ready', ok);
+        ni.dataset.id = next;
+        ni.innerHTML = ok ? `<span>Buy ${esc(it.name)}</span><i style="--p:100%"><b></b></i><span>${it.cost}</span>`
+          : `<span>Next: ${esc(it.name)}</span><i style="--p:${Math.min(100, h.gold / it.cost * 100).toFixed(0)}%"><b></b></i><span>${it.cost}</span>`;
       }
-    } else if (hud.cache.get('next') !== 'done') { hud.cache.set('next', 'done'); ni.textContent = 'Build complete'; }
+    } else if (hud.cache.get('next') !== 'done') { hud.cache.set('next', 'done'); ni.classList.remove('ready'); ni.dataset.id = ''; ni.textContent = h.items.length >= 6 ? 'Inventory full' : 'Build complete'; }
+    renderShop();
     for (const key of ['s1', 's2', 'ult']) {
       const el = $('sk-' + key), sk = h.def.skill[key];
       const cd = h.cds[key], total = sk.cd * (1 - (h.cdr || 0));
@@ -466,8 +473,8 @@ function consumeEvents(view) {
     } else if (e.type === 'ace') {
       const ally = me ? e.team === me.team : e.team === 0;
       hud.bannerQ.push({ title: ally ? 'Ace!' : 'Team wiped', cls: ally ? 'good' : 'bad' });
-    } else if (e.type === 'buy' && me && e.seat === me.seat) {
-      toast(e.item);
+    } else if ((e.type === 'buy' || e.type === 'sell') && me && e.seat === me.seat) {
+      toast(e.item, e.type);
     }
   }
 }
@@ -510,10 +517,12 @@ function playBanner(b) {
   hud.bannerHide = setTimeout(() => { el.hidden = true; }, 2600);
 }
 
-function toast(itemId) {
+function toast(itemId, type) {
   const it = D.ITEM[itemId];
   const el = $('toast');
-  el.innerHTML = `<img src="${itemIcon(itemId)}" alt=""><span>Bought <b>${esc(it.name)}</b></span>`;
+  el.innerHTML = type === 'sell'
+    ? `<img src="${itemIcon(itemId)}" alt=""><span>Sold <b>${esc(it.name)}</b> for ${Math.round(it.cost * LF.sim.SELL_RATE)}</span>`
+    : `<img src="${itemIcon(itemId)}" alt=""><span>Bought <b>${esc(it.name)}</b></span>`;
   el.hidden = false;
   hud.toastT = performance.now() + 2200;
   LF.audio.play('gold', 0.5);
@@ -526,6 +535,97 @@ function denyReason(key, why) {
   hud.denyT = performance.now();
   const v = LF.main.view();
   if (v && v.player) LF.render.addText(v.player.x, v.player.y - 130, msg, '#cfd6dc', 20);
+}
+
+// ---------------------------------------------------------------------------
+// Shop
+// ---------------------------------------------------------------------------
+const SHOP_TABS = ['All', 'Attack', 'Magic', 'Defense', 'Movement', 'Jungle'];
+const shopSt = { cat: 'All', sel: null, sig: '', busy: 0 };
+const WHY_BUY = { full: 'Your six item slots are full. Sell something first.', boots: 'You can only carry one pair of boots.', gold: '' };
+function shopHero() { const v = LF.main.view(); return v && v.player; }
+function initShop() {
+  $('shopTabs').innerHTML = SHOP_TABS.map(t => `<button class="role-tab" role="tab" type="button" data-cat="${t}">${t}</button>`).join('');
+  $('shopTabs').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (b) { shopSt.cat = b.dataset.cat; click(); renderShop(true); } });
+  const pick = e => { const b = e.target.closest('[data-id]'); if (b && b.dataset.id) { shopSt.sel = b.dataset.id; LF.audio.play('hover', 1); renderShop(true); } };
+  $('shopItems').addEventListener('click', pick);
+  $('recItems').addEventListener('click', pick);
+  $('shopBag').addEventListener('click', pick);
+  $('shopDetail').addEventListener('click', e => {
+    const b = e.target.closest('[data-op]');
+    if (b && !b.disabled) order(b.dataset.op, b.dataset.item);
+  });
+  $('buyNext').addEventListener('click', () => { const h = shopHero(); const n = h && LF.sim.nextRecommended(h); if (n) order('buy', n); });
+  $('autoBuy').addEventListener('change', e => { LF.input.setAutoBuy(e.target.checked); renderShop(true); });
+  $('shopClose').addEventListener('click', () => toggleShop(false));
+  $('btnShop').addEventListener('click', () => toggleShop());
+  $('shop').addEventListener('pointerdown', e => { if (e.target.id === 'shop') toggleShop(false); });
+  $('nextItem').addEventListener('click', () => {
+    const h = shopHero(), id = $('nextItem').dataset.id;
+    if (h && id && !LF.sim.canBuy(h, id)) order('buy', id); else toggleShop(true);
+  });
+}
+function order(op, id) {
+  if (performance.now() < shopSt.busy) return;
+  shopSt.busy = performance.now() + 350;
+  LF.input.shop(op, id);
+  LF.audio.play(op === 'buy' ? 'gold' : 'click', 0.7);
+  setTimeout(() => renderShop(true), 380);
+}
+function toggleShop(force) {
+  const el = $('shop');
+  const open = force === undefined ? el.hidden : force;
+  if (open && !(LF.main.inGame() && shopHero())) return;
+  el.hidden = !open;
+  if (open) { shopSt.sel = null; renderShop(true); }
+}
+function renderShop(force) {
+  if ($('shop').hidden) return;
+  const h = shopHero();
+  if (!h) return;
+  const next = LF.sim.nextRecommended(h);
+  if (!shopSt.sel || !D.ITEM[shopSt.sel]) shopSt.sel = next || D.ITEMS[0].id;
+  const sig = [Math.floor(h.gold), h.items.join(), shopSt.cat, shopSt.sel, LF.input.state.autoBuy].join('|');
+  if (!force && sig === shopSt.sig) return;
+  shopSt.sig = sig;
+  $('shopGold').textContent = Math.floor(h.gold);
+  $('autoBuy').checked = !!LF.input.state.autoBuy;
+  $('recHero').textContent = h.def.name;
+  $('recNote').textContent = h.def.buildNote;
+  const left = h.items.slice();
+  $('recItems').innerHTML = h.def.build.map(id => {
+    const k = left.indexOf(id), owned = k >= 0;
+    if (owned) left.splice(k, 1);
+    const it = D.ITEM[id];
+    return `<button class="rec-item${owned ? ' owned' : ''}${id === next ? ' next' : ''}" type="button" data-id="${id}" aria-pressed="${id === shopSt.sel}" title="${esc(it.name)} · ${it.cost}"><img src="${itemIcon(id)}" alt="${esc(it.name)}"></button>`;
+  }).join('');
+  const bn = $('buyNext');
+  if (next) {
+    const it = D.ITEM[next], why = LF.sim.canBuy(h, next);
+    bn.disabled = !!why;
+    bn.textContent = why === 'gold' ? `Next: ${it.name} (${it.cost - Math.floor(h.gold)} more gold)` : `Buy ${it.name} · ${it.cost}`;
+  } else { bn.disabled = true; bn.textContent = h.items.length >= 6 ? 'Slots full' : 'Build complete'; }
+  $('shopTabs').querySelectorAll('[data-cat]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.cat === shopSt.cat)));
+  const list = D.ITEMS.filter(it => shopSt.cat === 'All' || it.cat === shopSt.cat);
+  $('shopItems').innerHTML = list.map(it => {
+    const n = h.items.filter(i => i === it.id).length;
+    return `<button class="shop-card${h.gold < it.cost ? ' poor' : ''}" type="button" data-id="${it.id}" aria-pressed="${it.id === shopSt.sel}"><img src="${itemIcon(it.id)}" alt=""><span><strong>${esc(it.name)}</strong><small>${it.cost}</small></span>${n ? `<span class="count">×${n}</span>` : ''}</button>`;
+  }).join('');
+  const it = D.ITEM[shopSt.sel];
+  const why = LF.sim.canBuy(h, it.id);
+  const owned = h.items.includes(it.id);
+  const recFor = h.def.build.includes(it.id);
+  const short = why === 'gold' ? `Need ${it.cost - Math.floor(h.gold)} more gold.` : WHY_BUY[why] || '';
+  $('shopDetail').innerHTML = `<div class="sd-top"><img src="${itemIcon(it.id)}" alt=""><div><small>${it.cat} · ${it.cost} gold</small><h3>${esc(it.name)}</h3></div></div>
+    <p class="sd-stats">${esc(it.text)}</p><p class="sd-desc">${esc(it.desc)}</p>
+    ${recFor ? `<p class="sd-rec">Part of ${esc(h.def.name)}'s recommended build.</p>` : ''}
+    <div class="sd-actions"><button class="btn primary" type="button" data-op="buy" data-item="${it.id}" ${why ? 'disabled' : ''}>Buy · ${it.cost}</button>
+    ${owned ? `<button class="btn" type="button" data-op="sell" data-item="${it.id}">Sell · ${Math.round(it.cost * LF.sim.SELL_RATE)}</button>` : ''}
+    ${short ? `<span class="sd-why">${esc(short)}</span>` : ''}</div>`;
+  $('shopBag').innerHTML = Array.from({ length: 6 }, (_, i) => {
+    const id = h.items[i];
+    return id ? `<button class="bag-slot" type="button" data-id="${id}" aria-pressed="${id === shopSt.sel}" title="${esc(D.ITEM[id].name)}"><img src="${itemIcon(id)}" alt="${esc(D.ITEM[id].name)}"></button>` : '<span class="bag-slot empty"></span>';
+  }).join('');
 }
 
 // ---------------------------------------------------------------------------
@@ -594,6 +694,6 @@ function showEnd(view, actions) {
 
 LF.ui = {
   init, show, back, openSelect, mpStatus, renderLobbyList, openLobby, renderLobby, setupHud, updateHud, showScore, showEnd,
-  denyReason, skillIcon, itemIcon, get nick() { saveNick(); return nick; },
+  denyReason, skillIcon, itemIcon, toggleShop, get nick() { saveNick(); return nick; },
 };
 })(window.LF);

@@ -216,21 +216,21 @@ const ROLE_INDEX = Object.fromEntries(ROLES.map((r, i) => [r.id, i]));
 // Items
 // ---------------------------------------------------------------------------
 const ITEMS = [
-  { id: 'boots', name: 'Iron Greaves', icon: 'boots', cost: 300, ms: 25, armor: 10, text: '+25 move speed, +10 armor' },
-  { id: 'aboots', name: 'Arcane Sandals', icon: 'boots', cost: 300, ms: 25, cdr: 0.1, text: '+25 move speed, 10% cooldown reduction' },
-  { id: 'machete', name: 'Hunter Machete', icon: 'machete', cost: 300, ad: 15, monster: 0.6, text: '+15 attack, +60% damage to monsters' },
-  { id: 'blade', name: 'Hunter Blade', icon: 'sword', cost: 900, ad: 40, text: '+40 attack' },
-  { id: 'bow', name: 'Windrunner Bow', icon: 'bow', cost: 850, as: 0.3, ms: 5, text: '+30% attack speed, +5 move speed' },
-  { id: 'fang', name: 'Bloodfang', icon: 'fang', cost: 900, ad: 25, ls: 0.12, text: '+25 attack, 12% lifesteal' },
-  { id: 'ruin', name: 'Ruinblade', icon: 'sword', cost: 1400, ad: 55, as: 0.1, text: '+55 attack, +10% attack speed' },
-  { id: 'axe', name: 'War Axe', icon: 'axe', cost: 1100, ad: 30, hp: 400, cdr: 0.1, text: '+30 attack, +400 health, 10% cooldown reduction' },
-  { id: 'staff', name: 'Storm Staff', icon: 'staff', cost: 900, ap: 70, mana: 200, text: '+70 magic power, +200 mana' },
-  { id: 'clock', name: 'Clock of Ages', icon: 'clock', cost: 1000, ap: 45, cdr: 0.15, mana: 300, text: '+45 magic power, 15% cooldown reduction, +300 mana' },
-  { id: 'crown', name: 'Void Crown', icon: 'crown', cost: 1500, ap: 110, text: '+110 magic power' },
-  { id: 'plate', name: 'Titan Plate', icon: 'armor', cost: 1100, hp: 700, armor: 20, text: '+700 health, +20 armor' },
-  { id: 'helm', name: 'Guardian Helm', icon: 'helm', cost: 1200, hp: 900, regen: 8, text: '+900 health, +8 health per second' },
-  { id: 'thorn', name: 'Thornmail', icon: 'armor', cost: 1000, armor: 45, hp: 300, text: '+45 armor, +300 health' },
-  { id: 'charm', name: 'Oracle Charm', icon: 'charm', cost: 900, hp: 450, cdr: 0.1, healing: 0.2, text: '+450 health, 10% cooldown reduction, heals 20% stronger' },
+  { id: 'boots', name: 'Iron Greaves', icon: 'boots', cat: 'Movement', desc: 'Sturdy boots for heroes who trade blows up close. Buy early for safer laning.', cost: 300, ms: 25, armor: 10, text: '+25 move speed, +10 armor' },
+  { id: 'aboots', name: 'Arcane Sandals', icon: 'boots', cat: 'Movement', desc: 'Light sandals that speed up spellcasting. Best on mages and supports.', cost: 300, ms: 25, cdr: 0.1, text: '+25 move speed, 10% cooldown reduction' },
+  { id: 'machete', name: 'Hunter Machete', icon: 'machete', cat: 'Jungle', desc: 'A jungler\'s first buy. Clears monster camps much faster.', cost: 300, ad: 15, monster: 0.6, text: '+15 attack, +60% damage to monsters' },
+  { id: 'blade', name: 'Hunter Blade', icon: 'sword', cat: 'Attack', desc: 'A simple, heavy blade. Raw attack damage for marksmen and assassins.', cost: 900, ad: 40, text: '+40 attack' },
+  { id: 'bow', name: 'Windrunner Bow', icon: 'bow', cat: 'Attack', desc: 'Lets you fire much faster. Great for marksmen who attack all game.', cost: 850, as: 0.3, ms: 5, text: '+30% attack speed, +5 move speed' },
+  { id: 'fang', name: 'Bloodfang', icon: 'fang', cat: 'Attack', desc: 'Heals you as you hit. Helps fighters and marksmen stay in long fights.', cost: 900, ad: 25, ls: 0.12, text: '+25 attack, 12% lifesteal' },
+  { id: 'ruin', name: 'Ruinblade', icon: 'sword', cat: 'Attack', desc: 'A late-game weapon with big attack and a little speed. Save up for it.', cost: 1400, ad: 55, as: 0.1, text: '+55 attack, +10% attack speed' },
+  { id: 'axe', name: 'War Axe', icon: 'axe', cat: 'Attack', desc: 'Damage, health and faster skills in one. Ideal for fighters.', cost: 1100, ad: 30, hp: 400, cdr: 0.1, text: '+30 attack, +400 health, 10% cooldown reduction' },
+  { id: 'staff', name: 'Storm Staff', icon: 'staff', cat: 'Magic', desc: 'Crackles with lightning. Boosts skill damage and adds mana.', cost: 900, ap: 70, mana: 200, text: '+70 magic power, +200 mana' },
+  { id: 'clock', name: 'Clock of Ages', icon: 'clock', cat: 'Magic', desc: 'Bends time so skills come back sooner. Strong for spell-heavy heroes.', cost: 1000, ap: 45, cdr: 0.15, mana: 300, text: '+45 magic power, 15% cooldown reduction, +300 mana' },
+  { id: 'crown', name: 'Void Crown', icon: 'crown', cat: 'Magic', desc: 'The biggest magic power boost in the shop. A mage\'s final damage item.', cost: 1500, ap: 110, text: '+110 magic power' },
+  { id: 'plate', name: 'Titan Plate', icon: 'armor', cat: 'Defense', desc: 'Thick armor and lots of health. Good for anyone who keeps dying.', cost: 1100, hp: 700, armor: 20, text: '+700 health, +20 armor' },
+  { id: 'helm', name: 'Guardian Helm', icon: 'helm', cat: 'Defense', desc: 'Huge health and fast regeneration. Tanks love it.', cost: 1200, hp: 900, regen: 8, text: '+900 health, +8 health per second' },
+  { id: 'thorn', name: 'Thornmail', icon: 'armor', cat: 'Defense', desc: 'Heavy armor that blunts attacks. Buy it against marksmen and assassins.', cost: 1000, armor: 45, hp: 300, text: '+45 armor, +300 health' },
+  { id: 'charm', name: 'Oracle Charm', icon: 'charm', cat: 'Defense', desc: 'Health, faster skills and stronger heals. Made for supports.', cost: 900, hp: 450, cdr: 0.1, healing: 0.2, text: '+450 health, 10% cooldown reduction, heals 20% stronger' },
 ];
 const ITEM = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 const ITEM_INDEX = Object.fromEntries(ITEMS.map((i, n) => [i.id, n]));
@@ -244,7 +244,7 @@ const ITEM_INDEX = Object.fromEntries(ITEMS.map((i, n) => [i.id, n]));
 const HEROES = [
   // ----- Gold lane: marksmen -----
   {
-    id: 'kestra', name: 'Kestra', role: 'gold', cls: 'Marksman', title: 'Windborne Archer',
+    id: 'kestra', name: 'Kestra', role: 'gold', cls: 'Marksman', title: 'Windborne Archer', buildNote: 'Attack and attack speed first, lifesteal to keep shooting, armor at the end.',
     stats: { hp: 560, hpL: 95, mana: 420, manaL: 35, ad: 58, adL: 5.5, armor: 14, armorL: 2, as: 0.85, asL: 0.025, range: 290, ms: 200, regen: 4 },
     look: { skin: '#f0c9a5', main: '#2f7d55', trim: '#e9d58a', hair: '#8a4b2a', pants: '#3b3527', head: 'hood', weapon: 'bow', body: 'slim', cape: true },
     attack: { proj: 'arrow', speed: 1400 },
@@ -257,7 +257,7 @@ const HEROES = [
     build: ['boots', 'blade', 'bow', 'fang', 'ruin', 'thorn'],
   },
   {
-    id: 'dax', name: 'Dax', role: 'gold', cls: 'Marksman', title: 'Dustline Gunslinger',
+    id: 'dax', name: 'Dax', role: 'gold', cls: 'Marksman', title: 'Dustline Gunslinger', buildNote: 'Attack speed early to stack Hot Barrels, then raw damage and health.',
     stats: { hp: 580, hpL: 98, mana: 400, manaL: 32, ad: 55, adL: 5, armor: 15, armorL: 2, as: 0.9, asL: 0.03, range: 270, ms: 200, regen: 4 },
     look: { skin: '#c98d63', main: '#8a5a32', trim: '#f0b54a', hair: '#2b2b2b', pants: '#2f2b28', head: 'hat', weapon: 'guns', body: 'slim', cape: false },
     attack: { proj: 'bullet', speed: 1800 },
@@ -271,7 +271,7 @@ const HEROES = [
   },
   // ----- EXP lane: fighters -----
   {
-    id: 'brann', name: 'Brann', role: 'exp', cls: 'Fighter', title: 'Ironmane Berserker',
+    id: 'brann', name: 'Brann', role: 'exp', cls: 'Fighter', title: 'Ironmane Berserker', buildNote: 'Damage plus health, then lifesteal so Bloodlust keeps him alive.',
     stats: { hp: 780, hpL: 125, mana: 380, manaL: 30, ad: 66, adL: 5.5, armor: 22, armorL: 3, as: 0.8, asL: 0.015, range: 70, ms: 210, regen: 7 },
     look: { skin: '#e2b08a', main: '#9b3b2e', trim: '#c9c9c9', hair: '#d68a3a', pants: '#4a3426', head: 'horns', weapon: 'axe', body: 'broad', cape: true },
     attack: { melee: true },
@@ -284,7 +284,7 @@ const HEROES = [
     build: ['boots', 'axe', 'fang', 'plate', 'thorn', 'ruin'],
   },
   {
-    id: 'sela', name: 'Sela', role: 'exp', cls: 'Fighter', title: 'Shieldmaiden of the Tide',
+    id: 'sela', name: 'Sela', role: 'exp', cls: 'Fighter', title: 'Shieldmaiden of the Tide', buildNote: 'Bulky damage first, then armor and health to survive long brawls.',
     stats: { hp: 740, hpL: 120, mana: 380, manaL: 30, ad: 64, adL: 5.5, armor: 24, armorL: 3, as: 0.85, asL: 0.015, range: 95, ms: 210, regen: 7 },
     look: { skin: '#f3d2b8', main: '#3d5fa8', trim: '#e8e3d0', hair: '#f2e3a0', pants: '#2d3446', head: 'winged', weapon: 'spear', body: 'slim', cape: true },
     attack: { melee: true },
@@ -298,7 +298,7 @@ const HEROES = [
   },
   // ----- Mid lane: mages -----
   {
-    id: 'lumen', name: 'Lumen', role: 'mid', cls: 'Mage', title: 'Keeper of the Last Light',
+    id: 'lumen', name: 'Lumen', role: 'mid', cls: 'Mage', title: 'Keeper of the Last Light', buildNote: 'Magic power and shorter cooldowns for more Arc Bolts, then health.',
     stats: { hp: 540, hpL: 90, mana: 520, manaL: 45, ad: 50, adL: 3, armor: 12, armorL: 2, as: 0.75, asL: 0.015, range: 270, ms: 200, regen: 4 },
     look: { skin: '#f6dcc3', main: '#f1efe6', trim: '#f0c24e', hair: '#f7f1d0', pants: '#cfc8b4', head: 'hair', weapon: 'staff', body: 'robe', cape: false },
     attack: { proj: 'light', speed: 1200 },
@@ -311,7 +311,7 @@ const HEROES = [
     build: ['aboots', 'staff', 'clock', 'crown', 'helm', 'plate'],
   },
   {
-    id: 'nyx', name: 'Nyx', role: 'mid', cls: 'Mage', title: 'Witch of the Hollow Moon',
+    id: 'nyx', name: 'Nyx', role: 'mid', cls: 'Mage', title: 'Witch of the Hollow Moon', buildNote: 'Stack magic power fast to make Hex Orb and Void Rift hit hard.',
     stats: { hp: 550, hpL: 92, mana: 500, manaL: 45, ad: 48, adL: 3, armor: 12, armorL: 2, as: 0.75, asL: 0.015, range: 270, ms: 200, regen: 4 },
     look: { skin: '#dccbea', main: '#4a2a6e', trim: '#b98cff', hair: '#1d1230', pants: '#2a1940', head: 'witch', weapon: 'orb', body: 'robe', cape: true },
     attack: { proj: 'hex', speed: 1100 },
@@ -325,7 +325,7 @@ const HEROES = [
   },
   // ----- Jungle: assassins -----
   {
-    id: 'rook', name: 'Rook', role: 'jungle', cls: 'Assassin', title: 'The Quiet Knife',
+    id: 'rook', name: 'Rook', role: 'jungle', cls: 'Assassin', title: 'The Quiet Knife', buildNote: 'Machete for the jungle, then burst damage to finish heroes quickly.',
     stats: { hp: 640, hpL: 100, mana: 400, manaL: 30, ad: 68, adL: 6, armor: 18, armorL: 2.5, as: 0.9, asL: 0.02, range: 65, ms: 225, regen: 5 },
     look: { skin: '#caa48a', main: '#2a2f3a', trim: '#7ad1c9', hair: '#111111', pants: '#1c2028', head: 'mask', weapon: 'daggers', body: 'slim', cape: true },
     attack: { melee: true },
@@ -338,7 +338,7 @@ const HEROES = [
     build: ['machete', 'boots', 'blade', 'fang', 'ruin', 'plate'],
   },
   {
-    id: 'vex', name: 'Vex', role: 'jungle', cls: 'Assassin', title: 'Redclaw Stalker',
+    id: 'vex', name: 'Vex', role: 'jungle', cls: 'Assassin', title: 'Redclaw Stalker', buildNote: 'Machete for the jungle, then lifesteal and attack speed for long fights.',
     stats: { hp: 660, hpL: 105, mana: 380, manaL: 28, ad: 66, adL: 6, armor: 18, armorL: 2.5, as: 0.9, asL: 0.025, range: 65, ms: 225, regen: 5 },
     look: { skin: '#b9806a', main: '#7a2e2e', trim: '#ffb04a', hair: '#e04a3a', pants: '#3a1e1a', head: 'beast', weapon: 'claws', body: 'slim', cape: false },
     attack: { melee: true },
@@ -352,7 +352,7 @@ const HEROES = [
   },
   // ----- Roam: tank and support -----
   {
-    id: 'gorr', name: 'Gorr', role: 'roam', cls: 'Tank', title: 'The Walking Mountain',
+    id: 'gorr', name: 'Gorr', role: 'roam', cls: 'Tank', title: 'The Walking Mountain', buildNote: 'All defense: soak damage so the carries can fight safely.',
     stats: { hp: 920, hpL: 140, mana: 400, manaL: 30, ad: 52, adL: 3.5, armor: 30, armorL: 4, as: 0.7, asL: 0.01, range: 75, ms: 205, regen: 9 },
     look: { skin: '#8f9aa3', main: '#5f6b52', trim: '#c7b27a', hair: '#5d6670', pants: '#3b4234', head: 'stone', weapon: 'mace', body: 'heavy', cape: false, scale: 1.12 },
     attack: { melee: true },
@@ -365,7 +365,7 @@ const HEROES = [
     build: ['boots', 'plate', 'helm', 'thorn', 'charm', 'axe'],
   },
   {
-    id: 'mira', name: 'Mira', role: 'roam', cls: 'Support', title: 'Bloom of the Glade',
+    id: 'mira', name: 'Mira', role: 'roam', cls: 'Support', title: 'Bloom of the Glade', buildNote: 'Shorter cooldowns and stronger heals, then health to stay alive.',
     stats: { hp: 640, hpL: 100, mana: 480, manaL: 40, ad: 46, adL: 3, armor: 18, armorL: 2.5, as: 0.75, asL: 0.015, range: 260, ms: 200, regen: 5 },
     look: { skin: '#f2cdb0', main: '#6bbf8a', trim: '#f7a6c1', hair: '#c06a3a', pants: '#3e6a4e', head: 'flower', weapon: 'wand', body: 'robe', cape: true },
     attack: { proj: 'petal', speed: 1150 },

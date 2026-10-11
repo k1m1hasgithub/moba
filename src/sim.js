@@ -73,7 +73,7 @@ function makeHero(s, seat) {
   const f = D.FOUNTAIN[team];
   const a = (team === BLUE ? -Math.PI / 4 : Math.PI * 3 / 4) + (role - 2) * 0.35;
   const h = unit({
-    kind: 'hero', seat, team, role, def, human: !!s.human, local: !!s.local, peer: s.peer || null,
+    kind: 'hero', seat, team, role, def, human: !!s.human, local: !!s.local, peer: s.peer || null, autoBuy: !s.human,
     name: s.name || def.name, diff: s.diff || 'normal',
     x: f.x + Math.cos(a) * 110, y: f.y + Math.sin(a) * 110, r: 26, facing: a,
     level: 1, xp: 0, gold: 300, goldTotal: 300, items: [], cds: { s1: 0, s2: 0, ult: 0 },
@@ -88,7 +88,7 @@ function makeHero(s, seat) {
 }
 
 function emptyInput() {
-  return { mv: null, moveTo: null, attack: false, target: 0, casts: [], recall: false };
+  return { mv: null, moveTo: null, attack: false, target: 0, casts: [], recall: false, shop: [], autoBuy: undefined };
 }
 
 // Recompute item and level stats. Temporary buffs are applied every tick in applyBuffs.
@@ -108,6 +108,7 @@ function recalc(h, reset) {
   if (reset) { h.hp = b.hp; h.mana = b.mana; }
   else { h.hp += Math.max(0, b.hp - h.maxHp); h.mana += Math.max(0, b.mana - h.maxMana); }
   h.maxHp = b.hp; h.maxMana = b.mana;
+  h.hp = Math.min(h.hp, h.maxHp); h.mana = Math.min(h.mana, h.maxMana);
   h.base = b;
   applyBuffs(h);
 }
@@ -853,6 +854,7 @@ function pickAttackTarget(h, radius) {
 }
 
 function updateHero(h, dt) {
+  if (h.human) processShop(h);
   if (h.dead) {
     h.respawn -= dt;
     if (h.respawn <= 0) respawnHero(h);
@@ -952,18 +954,60 @@ function controlBot(h, dt) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Shop. Items can be bought anywhere; selling refunds 60%. Only one pair of boots.
+// ---------------------------------------------------------------------------
+const SELL_RATE = 0.6;
+function canBuy(h, id) {
+  const it = D.ITEM[id];
+  if (!it) return 'unknown';
+  if (h.items.length >= 6) return 'full';
+  if (it.icon === 'boots' && h.items.some(i => D.ITEM[i].icon === 'boots')) return 'boots';
+  if (h.gold < it.cost) return 'gold';
+  return '';
+}
+function buyItem(h, id) {
+  if (canBuy(h, id)) return false;
+  h.gold -= D.ITEM[id].cost;
+  h.items.push(id);
+  recalc(h, false);
+  ev('buy', { seat: h.seat, item: id });
+  return true;
+}
+function sellItem(h, id) {
+  const i = h.items.indexOf(id);
+  if (i < 0) return false;
+  h.items.splice(i, 1);
+  h.gold += Math.round(D.ITEM[id].cost * SELL_RATE);
+  recalc(h, false);
+  ev('sell', { seat: h.seat, item: id });
+  return true;
+}
+// Next item of the hero's recommended build that it doesn't own yet.
+function nextRecommended(h) {
+  const left = h.items.slice();
+  for (const id of h.def.build) {
+    const k = left.indexOf(id);
+    if (k >= 0) { left.splice(k, 1); continue; }
+    if (D.ITEM[id].icon === 'boots' && h.items.some(i => D.ITEM[i].icon === 'boots')) continue;
+    return id;
+  }
+  return null;
+}
+function processShop(h) {
+  const I = h.input;
+  if (I.autoBuy !== undefined) { h.autoBuy = !!I.autoBuy; I.autoBuy = undefined; }
+  while (I.shop.length) {
+    const op = I.shop.shift();
+    if (op.op === 'buy') buyItem(h, op.id);
+    else if (op.op === 'sell') sellItem(h, op.id);
+  }
+}
 function autoBuy() {
   for (const h of G.heroes) {
-    if (h.items.length >= 6) continue;
-    const next = h.def.build.find(id => !h.items.includes(id));
-    if (!next) continue;
-    const it = D.ITEM[next];
-    if (h.gold >= it.cost) {
-      h.gold -= it.cost;
-      h.items.push(next);
-      recalc(h, false);
-      ev('buy', { seat: h.seat, item: next });
-    }
+    if (!h.autoBuy) continue;
+    const next = nextRecommended(h);
+    if (next) buyItem(h, next);
   }
 }
 
@@ -1004,7 +1048,7 @@ function update(dt) {
 }
 
 LF.sim = {
-  createGame, update, cast, startRecall, pickAttackTarget, isTargetable, isStructure, validFoe, seen,
+  createGame, update, cast, startRecall, canBuy, nextRecommended, SELL_RATE, pickAttackTarget, isTargetable, isStructure, validFoe, seen,
   dist, gap, clamp, rand, moveToward, emptyInput, skillValue, hasBuff, enemyUnitsNear,
   get G() { return G; },
 };
