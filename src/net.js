@@ -181,11 +181,14 @@ const TAGS = ['', 'First Blood', 'Double Kill', 'Triple Kill', 'Mega Kill', 'Wip
 const EV = ['', 'kill', 'tower', 'monster', 'fx', 'level', 'gold', 'cast', 'recalled', 'respawn', 'buy', 'ace', 'gameover', 'spawn', 'recall', 'heal', 'sell'];
 const EV_I = Object.fromEntries(EV.map((v, i) => [v, i]));
 
+// Positions travel as 10-bit numbers in steps of Q world units (covers up to 5115).
+const Q = 5;
+const q = v => clamp(Math.round(v / Q), 0, 1023);
 const pctOf = u => clamp(Math.round(u.hp / u.maxHp * 100), 0, 100);
 const fac8 = a => Math.round((((a / TAU) % 1) + 1) % 1 * 8) % 8;
 
 function packMinion(u) {
-  const x = clamp(u.x >> 2, 0, 1023), y = clamp(u.y >> 2, 0, 1023);
+  const x = q(u.x), y = q(u.y);
   const code = u.team * 3 + MT.indexOf(u.mtype);
   let n = u.id % 4096;
   n = n * 1024 + x; n = n * 1024 + y; n = n * 128 + (u.dead ? 0 : Math.max(1, pctOf(u)));
@@ -198,13 +201,13 @@ function unpackMinion(n) {
   const f = n % 8; n = Math.floor(n / 8);
   const code = n % 8; n = Math.floor(n / 8);
   const hp = n % 128; n = Math.floor(n / 128);
-  const y = (n % 1024) * 4 + 2; n = Math.floor(n / 1024);
-  const x = (n % 1024) * 4 + 2; n = Math.floor(n / 1024);
+  const y = (n % 1024) * Q + 2; n = Math.floor(n / 1024);
+  const x = (n % 1024) * Q + 2; n = Math.floor(n / 1024);
   return { id: n, x, y, hp, team: Math.floor(code / 3), mtype: MT[code % 3], facing: f / 8 * TAU, atk, stun: st };
 }
 function packMonster(u) {
-  let n = clamp(u.x >> 2, 0, 1023);
-  n = n * 1024 + clamp(u.y >> 2, 0, 1023);
+  let n = q(u.x);
+  n = n * 1024 + q(u.y);
   n = n * 128 + (u.dead ? 0 : Math.max(1, pctOf(u)));
   n = n * 2 + (u.dead ? 1 : 0); n = n * 4 + (u.atkN % 4); n = n * 8 + fac8(u.facing); n = n * 2 + (u.stunT > 0 ? 1 : 0);
   return n;
@@ -215,12 +218,12 @@ function unpackMonster(n) {
   const atk = n % 4; n = Math.floor(n / 4);
   const dead = n % 2; n = Math.floor(n / 2);
   const hp = n % 128; n = Math.floor(n / 128);
-  const y = (n % 1024) * 4 + 2; n = Math.floor(n / 1024);
-  return { x: n * 4 + 2, y, hp, dead, atk, facing: f / 8 * TAU, stun: st };
+  const y = (n % 1024) * Q + 2; n = Math.floor(n / 1024);
+  return { x: n * Q + 2, y, hp, dead, atk, facing: f / 8 * TAU, stun: st };
 }
 function packProj(p) {
   let n = p.id % 4096;
-  n = n * 1024 + clamp(p.x >> 2, 0, 1023); n = n * 1024 + clamp(p.y >> 2, 0, 1023);
+  n = n * 1024 + q(p.x); n = n * 1024 + q(p.y);
   n = n * 64 + (VIS_I[p.vis] || 0);
   n = n * 64 + Math.round((((p.ang || 0) / TAU) % 1 + 1) % 1 * 64) % 64;
   n = n * 4 + p.team; n = n * 2 + (p.big ? 1 : 0);
@@ -231,8 +234,8 @@ function unpackProj(n) {
   const team = n % 4; n = Math.floor(n / 4);
   const ang = (n % 64) / 64 * TAU; n = Math.floor(n / 64);
   const vis = VIS[n % 64]; n = Math.floor(n / 64);
-  const y = (n % 1024) * 4 + 2; n = Math.floor(n / 1024);
-  const x = (n % 1024) * 4 + 2; n = Math.floor(n / 1024);
+  const y = (n % 1024) * Q + 2; n = Math.floor(n / 1024);
+  const x = (n % 1024) * Q + 2; n = Math.floor(n / 1024);
   return { id: n, x, y, vis, ang, team, big: !!big };
 }
 function packItems(items) { let n = 0; for (let i = 0; i < 6; i++) n = n * 16 + (items[i] ? D.ITEM_INDEX[items[i]] + 1 : 0); return n; }

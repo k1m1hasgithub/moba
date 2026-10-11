@@ -908,88 +908,175 @@ function buildTerrain() {
   const g = c.getContext('2d');
   g.scale(TERRAIN_SCALE, TERRAIN_SCALE);
   const rnd = D.mulberry32(77);
-  g.fillStyle = '#1f3a22'; g.fillRect(0, 0, D.W, D.H);
-  // Mottled grass, lighter near lanes
-  for (let i = 0; i < 3500; i++) {
-    const x = rnd() * D.W, y = rnd() * D.H, r = 30 + rnd() * 110;
-    g.fillStyle = rnd() < 0.5 ? `rgba(70,120,58,${0.05 + rnd() * 0.07})` : `rgba(10,26,14,${0.06 + rnd() * 0.08})`;
+  const area = (D.W * D.H) / (3600 * 3600);
+  const lanePath = L => { g.beginPath(); L.pts.forEach((p, i) => (i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y))); };
+  const strokeLane = (L, w, col) => { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'round'; g.lineJoin = 'round'; lanePath(L); g.stroke(); };
+  const nearLane = (x, y, d) => D.LANE_IDS.some(id => D.laneProject(D.LANES[id], x, y).d < d);
+
+  // Deep jungle floor everywhere, brighter meadow along the lanes and river.
+  g.fillStyle = '#183320'; g.fillRect(0, 0, D.W, D.H);
+  for (const id of D.LANE_IDS) { strokeLane(D.LANES[id], 900, 'rgba(46,92,44,0.55)'); strokeLane(D.LANES[id], 620, 'rgba(66,122,54,0.55)'); }
+  g.strokeStyle = 'rgba(56,108,52,0.5)'; g.lineWidth = 760; g.beginPath(); g.moveTo(-100, -100); g.lineTo(D.W + 100, D.H + 100); g.stroke();
+  for (let i = 0; i < 4200 * area; i++) {
+    const x = rnd() * D.W, y = rnd() * D.H, r = 30 + rnd() * 120;
+    g.fillStyle = rnd() < 0.5 ? `rgba(90,150,70,${0.04 + rnd() * 0.06})` : `rgba(6,20,10,${0.06 + rnd() * 0.09})`;
     circle(g, x, y, r); g.fill();
   }
-  for (const id of D.LANE_IDS) {
-    const L = D.LANES[id];
-    g.lineCap = 'round'; g.lineJoin = 'round';
-    g.strokeStyle = 'rgba(80,130,60,0.18)'; g.lineWidth = 520;
-    g.beginPath(); L.pts.forEach((p, i) => (i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y))); g.stroke();
-  }
   g.lineWidth = 2; g.lineCap = 'round';
-  for (let i = 0; i < 24000; i++) {
-    const x = rnd() * D.W, y = rnd() * D.H, l = 6 + rnd() * 10;
-    g.strokeStyle = rnd() < 0.55 ? 'rgba(130,175,90,0.18)' : 'rgba(10,30,14,0.25)';
+  for (let i = 0; i < 26000 * area; i++) {
+    const x = rnd() * D.W, y = rnd() * D.H, l = 6 + rnd() * 11;
+    g.strokeStyle = rnd() < 0.55 ? 'rgba(150,200,100,0.17)' : 'rgba(8,26,12,0.28)';
     g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 6, y - l); g.stroke();
   }
-  // River along y = x
-  const river = (w, col) => { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'butt'; g.beginPath(); g.moveTo(-100, -100); g.lineTo(D.W + 100, D.H + 100); g.stroke(); };
-  river(330, '#1f4a44'); river(280, '#22566a'); river(210, '#286b80'); river(90, 'rgba(120,200,220,0.12)');
-  g.strokeStyle = 'rgba(200,240,255,0.16)'; g.lineWidth = 3;
-  for (let i = 0; i < 220; i++) {
-    const t = rnd() * D.W, off = (rnd() - 0.5) * 220;
+  // Jungle undergrowth: ferns and leaf litter away from the lanes
+  for (let i = 0; i < 1600 * area; i++) {
+    const x = rnd() * D.W, y = rnd() * D.H;
+    if (nearLane(x, y, 330) || Math.abs(x - y) < 260) continue;
+    g.save(); g.translate(x, y); g.rotate(rnd() * TAU);
+    g.fillStyle = rnd() < 0.5 ? 'rgba(30,70,34,0.85)' : 'rgba(40,88,40,0.8)';
+    for (let k = 0; k < 5; k++) { g.rotate(TAU / 5); ellipse(g, 12, 0, 13, 4.5); g.fill(); }
+    g.restore();
+  }
+
+  // River: sandy banks, turquoise water, rocks and lily pads
+  const riverLine = (w, col) => { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'butt'; g.beginPath(); g.moveTo(-100, -100); g.lineTo(D.W + 100, D.H + 100); g.stroke(); };
+  riverLine(420, 'rgba(176,160,112,0.55)'); riverLine(372, '#9b8d63');
+  for (let i = 0; i < 140 * area; i++) {
+    const t = rnd() * D.W, side = rnd() < 0.5 ? -1 : 1, off = side * (170 + rnd() * 30);
+    const x = t + off / Math.SQRT2, y = t - off / Math.SQRT2;
+    g.fillStyle = rnd() < 0.5 ? '#8a7d56' : '#b3a37a'; circle(g, x, y, 14 + rnd() * 26); g.fill();
+  }
+  riverLine(330, '#1b5566'); riverLine(280, '#226f82'); riverLine(200, '#2c8a9a'); riverLine(90, 'rgba(120,220,220,0.22)');
+  g.strokeStyle = 'rgba(220,250,255,0.2)'; g.lineWidth = 3;
+  for (let i = 0; i < 300 * area; i++) {
+    const t = rnd() * D.W, off = (rnd() - 0.5) * 240;
     const x = t + off / Math.SQRT2, y = t - off / Math.SQRT2;
     g.beginPath(); g.moveTo(x - 16, y + 4); g.quadraticCurveTo(x, y - 6, x + 16, y + 4); g.stroke();
   }
-  // Lanes: worn stone roads
+  for (let i = 0; i < 60 * area; i++) {
+    const t = rnd() * D.W, off = (rnd() - 0.5) * 230;
+    const x = t + off / Math.SQRT2, y = t - off / Math.SQRT2;
+    if (rnd() < 0.55) {
+      const r = 10 + rnd() * 10, a0 = rnd() * TAU;
+      g.fillStyle = '#3f8a3a'; g.beginPath(); g.moveTo(x, y); g.arc(x, y, r, a0 + 0.5, a0 + TAU - 0.1); g.closePath(); g.fill();
+      if (rnd() < 0.4) { g.fillStyle = '#f2b6cf'; circle(g, x + 3, y - 3, 4); g.fill(); }
+    } else {
+      const r = 12 + rnd() * 18;
+      g.fillStyle = '#4c5258'; poly(g, x, y, r, 6, rnd()); g.fill();
+      g.fillStyle = '#6b7279'; poly(g, x - r * 0.25, y - r * 0.25, r * 0.55, 5, rnd()); g.fill();
+    }
+  }
+
+  // Lanes: paved stone roads with curbs and staggered tiles
   for (const id of D.LANE_IDS) {
     const L = D.LANES[id];
-    const stroke = (w, col) => { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); L.pts.forEach((p, i) => (i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y))); g.stroke(); };
-    stroke(300, 'rgba(40,34,24,0.45)'); stroke(262, '#5f513a'); stroke(230, '#716148'); stroke(150, 'rgba(150,130,96,0.35)');
-    for (let s = 0; s < L.len; s += 26) {
-      const p = D.laneAt(L, s);
-      for (let k = 0; k < 3; k++) {
-        const off = (rnd() - 0.5) * 210;
-        g.fillStyle = rnd() < 0.5 ? 'rgba(40,32,20,0.28)' : 'rgba(190,170,130,0.18)';
-        g.fillRect(p.x - p.dy * off, p.y + p.dx * off, 3 + rnd() * 5, 3 + rnd() * 3);
+    strokeLane(L, 318, 'rgba(10,14,10,0.35)');
+    strokeLane(L, 300, '#47443c');
+    strokeLane(L, 270, '#8c836e');
+    strokeLane(L, 236, '#999079');
+    const step = 36;
+    let row = 0;
+    for (let s = 0; s < L.len; s += step, row++) {
+      const p = D.laneAt(L, s), nx = -p.dy, ny = p.dx;
+      // Transverse joint
+      g.strokeStyle = 'rgba(52,48,40,0.35)'; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(p.x + nx * 128, p.y + ny * 128); g.lineTo(p.x - nx * 128, p.y - ny * 128); g.stroke();
+      // Staggered tiles: tints and longitudinal joints
+      for (let k = -2; k <= 2; k++) {
+        const o = (k + (row % 2 ? 0.5 : 0)) * 52;
+        if (Math.abs(o) > 118) continue;
+        const cx = p.x + nx * o + p.dx * step / 2, cy = p.y + ny * o + p.dy * step / 2;
+        if (rnd() < 0.35) {
+          g.fillStyle = rnd() < 0.5 ? 'rgba(255,248,226,0.1)' : 'rgba(40,34,24,0.12)';
+          g.save(); g.translate(cx, cy); g.rotate(Math.atan2(p.dy, p.dx)); g.fillRect(-step / 2 + 1, -25, step - 2, 50); g.restore();
+        }
+        g.strokeStyle = 'rgba(52,48,40,0.28)'; g.lineWidth = 1.6;
+        const jx = p.x + nx * (o + 26), jy = p.y + ny * (o + 26);
+        if (Math.abs(o + 26) < 124) { g.beginPath(); g.moveTo(jx, jy); g.lineTo(jx + p.dx * step, jy + p.dy * step); g.stroke(); }
+      }
+      // Curb stones and moss on the edges
+      for (const side of [-1, 1]) {
+        const ex = p.x + nx * side * 143, ey = p.y + ny * side * 143;
+        g.fillStyle = row % 2 ? '#5a564c' : '#524e45';
+        g.save(); g.translate(ex, ey); g.rotate(Math.atan2(p.dy, p.dx)); g.fillRect(-step / 2, -7, step - 3, 14); g.restore();
+        if (rnd() < 0.3) { g.fillStyle = 'rgba(80,140,60,0.6)'; circle(g, ex + nx * side * 6, ey + ny * side * 6, 4 + rnd() * 6); g.fill(); }
       }
     }
   }
-  // Camp clearings
+
+  // Boss pits: sunken stone arenas in the river
   for (const cp of D.CAMPS) {
-    const gr = g.createRadialGradient(cp.x, cp.y, 10, cp.x, cp.y, cp.type === 'wyrm' || cp.type === 'turtle' ? 260 : 170);
-    gr.addColorStop(0, 'rgba(120,100,70,0.55)'); gr.addColorStop(1, 'rgba(120,100,70,0)');
-    g.fillStyle = gr; circle(g, cp.x, cp.y, cp.type === 'wyrm' || cp.type === 'turtle' ? 260 : 170); g.fill();
+    const boss = cp.type === 'wyrm' || cp.type === 'turtle';
+    if (!boss) {
+      const gr = g.createRadialGradient(cp.x, cp.y, 10, cp.x, cp.y, 190);
+      gr.addColorStop(0, 'rgba(120,96,64,0.6)'); gr.addColorStop(1, 'rgba(120,96,64,0)');
+      g.fillStyle = gr; circle(g, cp.x, cp.y, 190); g.fill();
+      for (let i = 0; i < 9; i++) {
+        const a = i / 9 * TAU + rnd() * 0.3;
+        g.fillStyle = '#5c5a52'; poly(g, cp.x + Math.cos(a) * 150, cp.y + Math.sin(a) * 150, 9 + rnd() * 6, 5, rnd() * TAU); g.fill();
+      }
+      continue;
+    }
+    const R = 340, rune = cp.type === 'wyrm' ? '#b77dff' : '#5fe0d8';
+    g.fillStyle = 'rgba(0,0,0,0.35)'; circle(g, cp.x + 10, cp.y + 14, R + 34); g.fill();
+    g.fillStyle = '#3c3a35'; circle(g, cp.x, cp.y, R + 30); g.fill();
+    for (let i = 0; i < 28; i++) {
+      const a = i / 28 * TAU;
+      g.fillStyle = i % 2 ? '#56534b' : '#4b4841';
+      g.save(); g.translate(cp.x + Math.cos(a) * (R + 15), cp.y + Math.sin(a) * (R + 15)); g.rotate(a);
+      g.fillRect(-14, -36, 28, 72); g.restore();
+    }
+    const fl = g.createRadialGradient(cp.x, cp.y, 20, cp.x, cp.y, R);
+    fl.addColorStop(0, '#3b3f3a'); fl.addColorStop(1, '#23262a');
+    g.fillStyle = fl; circle(g, cp.x, cp.y, R); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 3;
+    for (let r = 90; r < R; r += 80) { circle(g, cp.x, cp.y, r); g.stroke(); }
+    g.strokeStyle = rgba(rune, 0.55); g.lineWidth = 6; g.setLineDash([26, 18]);
+    circle(g, cp.x, cp.y, R - 40); g.stroke(); g.setLineDash([]);
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * TAU + 0.2;
+      g.fillStyle = rgba(rune, 0.7); diamond(g, cp.x + Math.cos(a) * (R - 40), cp.y + Math.sin(a) * (R - 40), 8, 13); g.fill();
+    }
   }
-  // Bases
+
+  // Bases: tiled plazas with team inlays
   for (const team of [0, 1]) {
     const T = D.TEAMS[team];
-    const cx = team === 0 ? 330 : D.W - 330, cy = team === 0 ? D.H - 330 : 330;
-    g.fillStyle = '#3a3f45'; circle(g, cx, cy, 560); g.fill();
-    g.fillStyle = '#495057'; circle(g, cx, cy, 535); g.fill();
-    g.strokeStyle = 'rgba(0,0,0,0.25)'; g.lineWidth = 3;
-    for (let r = 120; r < 535; r += 80) { circle(g, cx, cy, r); g.stroke(); }
-    for (let a = 0; a < 32; a++) {
-      const an = a / 32 * Math.PI * 2;
-      g.beginPath(); g.moveTo(cx + Math.cos(an) * 120, cy + Math.sin(an) * 120); g.lineTo(cx + Math.cos(an) * 535, cy + Math.sin(an) * 535); g.stroke();
+    const off = 330 * D.MAP, R = 560 * D.MAP;
+    const cx = team === 0 ? off : D.W - off, cy = team === 0 ? D.H - off : off;
+    g.fillStyle = 'rgba(0,0,0,0.35)'; circle(g, cx + 12, cy + 16, R + 30); g.fill();
+    g.fillStyle = '#3a3e42'; circle(g, cx, cy, R + 20); g.fill();
+    g.fillStyle = '#5a5f63'; circle(g, cx, cy, R); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = 3;
+    for (let r = 140; r < R; r += 90) { circle(g, cx, cy, r); g.stroke(); }
+    for (let a = 0; a < 40; a++) {
+      const an = a / 40 * TAU;
+      g.beginPath(); g.moveTo(cx + Math.cos(an) * 140, cy + Math.sin(an) * 140); g.lineTo(cx + Math.cos(an) * R, cy + Math.sin(an) * R); g.stroke();
     }
-    g.strokeStyle = rgba(T.color, 0.4); g.lineWidth = 10; circle(g, cx, cy, 548); g.stroke();
+    g.strokeStyle = rgba(T.color, 0.45); g.lineWidth = 14; circle(g, cx, cy, R - 30); g.stroke();
+    g.strokeStyle = rgba(T.light, 0.25); g.lineWidth = 4; circle(g, cx, cy, R - 60); g.stroke();
+    for (let i = 0; i < 12; i++) {
+      const an = i / 12 * TAU;
+      g.fillStyle = rgba(T.color, 0.6); diamond(g, cx + Math.cos(an) * (R - 30), cy + Math.sin(an) * (R - 30), 10, 16); g.fill();
+    }
     const f = D.FOUNTAIN[team];
     const fg = g.createRadialGradient(f.x, f.y, 10, f.x, f.y, f.r);
-    fg.addColorStop(0, rgba(T.color, 0.5)); fg.addColorStop(1, rgba(T.color, 0.05));
+    fg.addColorStop(0, rgba(T.color, 0.55)); fg.addColorStop(1, rgba(T.color, 0.05));
     g.fillStyle = fg; circle(g, f.x, f.y, f.r); g.fill();
-    g.fillStyle = '#6a7178'; circle(g, f.x, f.y, 52); g.fill();
-    g.fillStyle = T.color; circle(g, f.x, f.y, 36); g.fill();
-    g.fillStyle = T.light; circle(g, f.x - 8, f.y - 8, 10); g.fill();
+    g.fillStyle = '#6a7178'; circle(g, f.x, f.y, 60); g.fill();
+    g.fillStyle = T.color; circle(g, f.x, f.y, 42); g.fill();
+    g.fillStyle = T.light; circle(g, f.x - 10, f.y - 10, 12); g.fill();
   }
-  // Flowers and bushes for texture
-  for (let i = 0; i < 900; i++) {
+
+  // Wildflowers in the meadows (not on stone)
+  const baseOff = 330 * D.MAP, baseR = 560 * D.MAP + 40;
+  const onStone = (x, y) => Math.hypot(x - baseOff, y - (D.H - baseOff)) < baseR || Math.hypot(x - (D.W - baseOff), y - baseOff) < baseR
+    || D.CAMPS.some(cp => cp.side === D.NEUTRAL && Math.hypot(cp.x - x, cp.y - y) < 400);
+  for (let i = 0; i < 1100 * area; i++) {
     const x = rnd() * D.W, y = rnd() * D.H;
-    let onLane = false;
-    for (const id of D.LANE_IDS) if (D.laneProject(D.LANES[id], x, y).d < 160) onLane = true;
-    if (onLane || Math.abs(x - y) < 190) continue;
-    if (rnd() < 0.7) {
-      g.fillStyle = ['#e8d36a', '#f0a6c0', '#c9e8ff', '#ffffff'][(rnd() * 4) | 0];
-      for (let k = 0; k < 4; k++) { circle(g, x + (rnd() - 0.5) * 30, y + (rnd() - 0.5) * 20, 3.5); g.fill(); }
-    } else {
-      g.fillStyle = 'rgba(20,50,24,0.8)'; circle(g, x, y, 22 + rnd() * 16); g.fill();
-      g.fillStyle = 'rgba(46,96,48,0.9)'; circle(g, x - 4, y - 4, 16 + rnd() * 10); g.fill();
-    }
+    if (nearLane(x, y, 175) || Math.abs(x - y) < 230 || onStone(x, y)) continue;
+    g.fillStyle = ['#e8d36a', '#f0a6c0', '#c9e8ff', '#ffffff'][(rnd() * 4) | 0];
+    for (let k = 0; k < 4; k++) { circle(g, x + (rnd() - 0.5) * 30, y + (rnd() - 0.5) * 20, 3.5); g.fill(); }
   }
   return c;
 }

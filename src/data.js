@@ -3,7 +3,10 @@
 window.LF = window.LF || {};
 (function (LF) {
 
-const W = 3600, H = 3600;
+// The layout below is authored on a 3600 grid and scaled up by MAP.
+const MAP = 4 / 3;
+const W = 4800, H = 4800;
+const S = v => Math.round(v * MAP);
 const BLUE = 0, RED = 1, NEUTRAL = 2;
 const TAU = Math.PI * 2;
 
@@ -21,7 +24,7 @@ const TEAMS = [
 // Lanes (listed from the blue base toward the red base)
 // ---------------------------------------------------------------------------
 function makeLane(id, raw) {
-  const pts = raw.map(([x, y]) => ({ x, y }));
+  const pts = raw.map(([x, y]) => ({ x: S(x), y: S(y) }));
   const cum = [0];
   for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
   return { id, pts, cum, len: cum[cum.length - 1] };
@@ -60,8 +63,8 @@ function laneProject(lane, x, y) {
 // ---------------------------------------------------------------------------
 // Bases, structures, jungle
 // ---------------------------------------------------------------------------
-const FOUNTAIN = [{ x: 190, y: 3410, r: 240 }, { x: 3410, y: 190, r: 240 }];
-const CORE_POS = [{ x: 470, y: 3130 }, mirror({ x: 470, y: 3130 })];
+const FOUNTAIN = [{ x: S(190), y: S(3410), r: 260 }, { x: S(3410), y: S(190), r: 260 }];
+const CORE_POS = [{ x: S(470), y: S(3130) }, mirror({ x: S(470), y: S(3130) })];
 
 // Structure order per team: top outer, top inner, mid outer, mid inner, bot outer, bot inner, core.
 const STRUCTS = (() => {
@@ -80,9 +83,9 @@ const STRUCTS = (() => {
   return [blue, red];
 })();
 const STRUCT_STATS = {
-  outer: { hp: 4200, ad: 210, range: 430, as: 0.85, r: 38 },
-  inner: { hp: 4800, ad: 250, range: 430, as: 0.85, r: 38 },
-  core: { hp: 7200, ad: 320, range: 470, as: 0.9, r: 64 },
+  outer: { hp: 3500, ad: 210, range: 430, as: 0.85, r: 38 },
+  inner: { hp: 4000, ad: 250, range: 430, as: 0.85, r: 38 },
+  core: { hp: 6200, ad: 320, range: 470, as: 0.9, r: 64 },
 };
 
 const MONSTERS = {
@@ -103,12 +106,13 @@ const CAMPS = (() => {
     { type: 'crab', x: 2150, y: 2950 }, { type: 'wolf', x: 650, y: 1150 },
   ];
   const out = [];
-  for (const c of blue) {
+  for (const c0 of blue) {
+    const c = Object.assign({}, c0, { x: S(c0.x), y: S(c0.y) });
     out.push(Object.assign({ side: BLUE }, c));
     out.push(Object.assign({ side: RED }, c, mirror(c)));
   }
-  out.push({ type: 'turtle', side: NEUTRAL, x: 2450, y: 2450 });
-  out.push({ type: 'wyrm', side: NEUTRAL, x: 1150, y: 1150 });
+  out.push({ type: 'turtle', side: NEUTRAL, x: S(2450), y: S(2450) });
+  out.push({ type: 'wyrm', side: NEUTRAL, x: S(1150), y: S(1150) });
   return out;
 })();
 
@@ -126,7 +130,7 @@ const OBSTACLES = (() => {
   const blue = [];
   const clearOf = (x, y, r) => {
     for (const id of LANE_IDS) if (laneProject(LANES[id], x, y).d < r + 170) return false;
-    for (const c of CAMPS) if (Math.hypot(c.x - x, c.y - y) < r + 210) return false;
+    for (const c of CAMPS) if (Math.hypot(c.x - x, c.y - y) < r + (c.side === NEUTRAL ? 430 : 210)) return false;
     for (const f of FOUNTAIN) if (Math.hypot(f.x - x, f.y - y) < r + 600) return false;
     for (const t of STRUCTS[0].concat(STRUCTS[1])) if (Math.hypot(t.x - x, t.y - y) < r + 200) return false;
     if (Math.abs(x - y) / Math.SQRT2 < r + 150) return false; // keep the river open
@@ -138,7 +142,7 @@ const OBSTACLES = (() => {
     }
     return x > r + 40 && y < H - r - 40;
   };
-  for (let i = 0; i < 3000 && blue.length < 30; i++) {
+  for (let i = 0; i < 6000 && blue.length < 52; i++) {
     const x = 200 + rnd() * (W - 400), y = 200 + rnd() * (H - 400), r = 50 + rnd() * 50;
     if (clearOf(x, y, r)) blue.push({ x, y, r, kind: rnd() < 0.62 ? 'tree' : 'rock', seed: (rnd() * 1e6) | 0 });
   }
@@ -156,7 +160,7 @@ const BUSHES = (() => {
     if (x < r + 40 || y > H - r - 40 || x > W - r - 40 || y < r + 40) return false;
     if (y - x < r + 60) return false; // blue half, off the river centre
     for (const o of OBSTACLES) if (Math.hypot(o.x - x, o.y - y) < o.r + r + 15) return false;
-    for (const c of CAMPS) if (Math.hypot(c.x - x, c.y - y) < r + 135) return false;
+    for (const c of CAMPS) if (Math.hypot(c.x - x, c.y - y) < r + (c.side === NEUTRAL ? 400 : 135)) return false;
     for (const f of FOUNTAIN) if (Math.hypot(f.x - x, f.y - y) < r + 700) return false;
     for (const t of STRUCTS[0].concat(STRUCTS[1])) if (Math.hypot(t.x - x, t.y - y) < r + 130) return false;
     for (const b of blue) {
@@ -181,7 +185,7 @@ const BUSHES = (() => {
   }
   // Jungle
   const laneCount = blue.length;
-  for (let i = 0; i < 6000 && blue.length < laneCount + 6; i++) {
+  for (let i = 0; i < 9000 && blue.length < laneCount + 10; i++) {
     const x = 300 + rnd() * (W - 600), y = 300 + rnd() * (H - 600), r = 100 + rnd() * 30;
     let nearLane = false;
     for (const id of LANE_IDS) if (laneProject(LANES[id], x, y).d < r + 140) nearLane = true;
@@ -383,9 +387,9 @@ const HERO_INDEX = Object.fromEntries(HEROES.map((h, i) => [h.id, i]));
 for (const h of HEROES) h.skill = Object.fromEntries(h.skills.map(s => [s.key, s]));
 
 const MINION = {
-  melee: { hp: 520, ad: 26, range: 40, as: 0.9, ms: 165, r: 18, gold: 28, xp: 40, armor: 8 },
-  caster: { hp: 360, ad: 34, range: 260, as: 0.75, ms: 165, r: 16, gold: 22, xp: 32, armor: 0, proj: 'minion', speed: 750 },
-  siege: { hp: 1100, ad: 70, range: 280, as: 0.55, ms: 155, r: 24, gold: 60, xp: 70, armor: 20, proj: 'cannon', speed: 650, siege: 2 },
+  melee: { hp: 520, ad: 26, range: 40, as: 0.9, ms: 185, r: 18, gold: 28, xp: 40, armor: 8 },
+  caster: { hp: 360, ad: 34, range: 260, as: 0.75, ms: 185, r: 16, gold: 22, xp: 32, armor: 0, proj: 'minion', speed: 750 },
+  siege: { hp: 1100, ad: 70, range: 280, as: 0.55, ms: 175, r: 24, gold: 60, xp: 70, armor: 20, proj: 'cannon', speed: 650, siege: 2 },
 };
 
 const ULT_LEVEL = 4, MAX_LEVEL = 15;
@@ -398,7 +402,7 @@ const DIFFICULTY = {
 };
 
 LF.data = {
-  W, H, BLUE, RED, NEUTRAL, TAU, TEAMS, mirror, LANES, LANE_IDS, laneAt, laneProject,
+  W, H, MAP, BLUE, RED, NEUTRAL, TAU, TEAMS, mirror, LANES, LANE_IDS, laneAt, laneProject,
   FOUNTAIN, CORE_POS, STRUCTS, STRUCT_STATS, MONSTERS, CAMPS, OBSTACLES, BUSHES, bushAt, ROLES, ROLE_INDEX,
   ITEMS, ITEM, ITEM_INDEX, HEROES, HERO, HERO_INDEX, MINION, ULT_LEVEL, MAX_LEVEL, xpToNext, DIFFICULTY, mulberry32,
 };
