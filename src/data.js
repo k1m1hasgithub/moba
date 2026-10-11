@@ -220,8 +220,8 @@ const ROLE_INDEX = Object.fromEntries(ROLES.map((r, i) => [r.id, i]));
 // Items
 // ---------------------------------------------------------------------------
 // Three tiers. Tier 3 pieces are bought outright. Tier 2 items are crafted from 1-2 Tier 3 pieces and
-// Tier 1 items from 2-3 Tier 2 items. Buying an item uses up the components you own and you pay the
-// crafting fee (`price`) plus whatever parts are missing. `cost` is the full price from scratch.
+// Tier 1 items from 2-3 Tier 2 items. `cost` is the full price: the crafting fee (`price`) plus the full
+// price of every part. Parts you already own are used up and take part of their price off (see sim.js).
 // `stats` are normal attributes and add up. `unique` attributes and the `passive` only count once per
 // item, however many copies you own.
 const ITEMS = [

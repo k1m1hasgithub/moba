@@ -647,7 +647,7 @@ function recipeTree(h, id) {
     if (k >= 0) pool.splice(k, 1);
     const own = k >= 0;
     const kids = !own && it.from ? `<div class="t-kids">${it.from.map(c => node(c, false)).join('')}</div>` : '';
-    return `<div class="t-branch"><button class="t-node${own ? ' own' : ''}${iid === shopSt.sel ? ' sel' : ''}" type="button" data-id="${iid}" title="${esc(it.name)}"><img src="${itemIcon(iid)}" alt="${esc(it.name)}"><small>${own ? 'Owned' : it.cost}</small></button>${kids}</div>`;
+    return `<div class="t-branch"><button class="t-node${own ? ' own' : ''}${iid === shopSt.sel ? ' sel' : ''}" type="button" data-id="${iid}" title="${esc(it.name)}"><img src="${itemIcon(iid)}" alt="${esc(it.name)}"><small>${own ? '−' + LF.sim.partCredit(iid) : it.cost}</small></button>${kids}</div>`;
   };
   return node(id, true);
 }
@@ -710,11 +710,11 @@ function renderShop(force) {
     <div class="sd-attrs-row"><div class="sd-attrs"><span class="sd-label">Attributes</span>${list('sd-stats', it.lines)}</div>
     ${it.uniqueLines.length ? `<div class="sd-attrs"><span class="sd-label uniq">Unique attributes</span>${list('sd-uniq', it.uniqueLines)}</div>` : ''}</div>
     ${it.passive ? `<div class="sd-passive"><span class="sd-label">Unique passive · ${esc(it.passive.name)}</span><p>${esc(it.passive.text)}</p></div>` : ''}
-    ${it.from ? `<div class="sd-recipe"><span class="sd-label">Recipe <em>crafting fee ${it.price}</em></span><div class="tree">${recipeTree(h, it.id)}</div></div>` : ''}
+    ${it.from ? `<div class="sd-recipe"><span class="sd-label">Recipe <em>parts you own count for ${Math.round(LF.sim.PART_CREDIT * 100)}% of their price</em></span><div class="tree">${recipeTree(h, it.id)}</div></div>` : ''}
     ${it.into.length ? `<div class="sd-into"><span class="sd-label">Builds into</span><div class="into">${it.into.map(i => `<button class="t-node" type="button" data-id="${i}" title="${esc(D.ITEM[i].name)}"><img src="${itemIcon(i)}" alt="${esc(D.ITEM[i].name)}"></button>`).join('')}</div></div>` : ''}
     ${recFor ? `<p class="sd-rec">Part of ${esc(h.def.name)}'s recommended build.</p>` : ''}
     <div class="sd-actions"><button class="btn primary" type="button" data-op="buy" data-item="${it.id}" ${why ? 'disabled' : ''}>${it.tier === 3 ? 'Buy' : 'Craft'} · ${plan.cost}</button>
-    ${plan.used.length ? `<span class="sd-save">Uses ${plan.used.map(u => esc(D.ITEM[u].name)).join(', ')} (full price ${it.cost})</span>` : ''}
+    ${plan.used.length ? `<span class="sd-save">Your ${plan.used.map(u => esc(D.ITEM[u].name)).join(', ')} take ${plan.credit} off (full price ${it.cost})</span>` : ''}
     ${owned ? `<button class="btn" type="button" data-op="sell" data-item="${it.id}">Sell · ${Math.round(it.cost * LF.sim.SELL_RATE)}</button>` : ''}
     ${short ? `<span class="sd-why">${esc(short)}</span>` : ''}</div>`;
   if (fresh) $('shopDetail').scrollTop = 0;

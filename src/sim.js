@@ -1006,26 +1006,27 @@ function controlBot(h, dt) {
 }
 
 // ---------------------------------------------------------------------------
-// Shop. Items can be bought anywhere; selling refunds 60% of the full price. Buying a crafted item uses
-// up the components you own (recursively) and charges the crafting fee plus the missing parts.
+// Shop. Items can be bought anywhere; selling refunds 60% of the full price. Crafting uses up the
+// components you own (recursively). Each owned component takes 80% of its own full price off the new
+// item, so buying piece by piece costs a little more than saving up. A Tier 3 piece that was crafted into
+// a Tier 2 item is gone; only the Tier 2 item counts toward the Tier 1 price.
 // Only one pair of boots.
 // ---------------------------------------------------------------------------
-const SELL_RATE = 0.6;
+const SELL_RATE = 0.6, PART_CREDIT = 0.8;
+const partCredit = id => Math.round(D.ITEM[id].cost * PART_CREDIT);
 function purchasePlan(items, id) {
   const pool = items.slice(), used = [], missing = [];
-  let cost = 0;
+  let credit = 0;
   const need = (iid, top) => {
     if (!top) {
       const k = pool.indexOf(iid);
-      if (k >= 0) { pool.splice(k, 1); used.push(iid); return; }
+      if (k >= 0) { pool.splice(k, 1); used.push(iid); credit += partCredit(iid); return; }
       missing.push(iid);
     }
-    const it = D.ITEM[iid];
-    cost += it.price;
-    for (const c of it.from || []) need(c, false);
+    for (const c of D.ITEM[iid].from || []) need(c, false);
   };
   need(id, true);
-  return { cost, used, missing, left: pool };
+  return { cost: D.ITEM[id].cost - credit, credit, used, missing, left: pool };
 }
 function canBuy(h, id) {
   const it = D.ITEM[id];
@@ -1140,7 +1141,7 @@ function update(dt) {
 }
 
 LF.sim = {
-  createGame, update, cast, startRecall, canBuy, purchasePlan, nextRecommended, nextPurchase, SELL_RATE, pickAttackTarget, isTargetable, isStructure, validFoe, seen,
+  createGame, update, cast, startRecall, canBuy, purchasePlan, partCredit, nextRecommended, nextPurchase, SELL_RATE, PART_CREDIT, pickAttackTarget, isTargetable, isStructure, validFoe, seen,
   dist, gap, clamp, rand, moveToward, emptyInput, skillValue, hasBuff, enemyUnitsNear,
   get G() { return G; },
 };
