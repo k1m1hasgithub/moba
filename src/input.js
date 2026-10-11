@@ -172,7 +172,7 @@ function pickAt(x, y) {
   };
   for (const h of v.heroes) if (!(h.hidden && h.hidden[me.team])) consider(h, 34, 34);
   for (const m of v.minions) consider(m, 14, m.r + 6);
-  for (const m of v.monsters) consider(m, 24, m.r + 8);
+  for (const m of v.monsters) consider(m, m.mtype === 'wyrm' ? 110 : 24, m.r + (m.mtype === 'wyrm' ? 60 : 8));
   for (const s of v.structs) if (!s.guarded && !(LF.sim.G && v === LF.sim.G && !LF.sim.isTargetable(s))) consider(s, 50, s.r + 30);
   return best;
 }

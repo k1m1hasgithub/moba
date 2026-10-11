@@ -476,6 +476,121 @@ function drawSiege(ctx, team, t, walk, atk) {
 
 const BRUTE_LOOK = { skin: '#c4573a', main: '#6e2b1c', trim: '#f0a040', pants: '#3a1a12', head: 'horns', weapon: 'club', body: 'heavy', scale: 1.45, hair: '#3a1a12' };
 
+// The Lord: a towering armored dragon-beast that guards the top river pit.
+// Drawn standing upright, facing +x, feet at (0,0).
+function drawLord(ctx, t, pose, C) {
+  const ARMOR = '#2b1d3d', PLATE = '#4a2f6e', PLATE_HI = '#6d48a3', BONE = '#ece0c4', GOLD = '#d9b65c', CORE = '#c77dff', EYE = '#ffb347';
+  const breathe = Math.sin(t * 1.6) * 3;
+  const atk = pose.atk >= 0 ? Math.sin(pose.atk * Math.PI) : 0;
+  const flap = Math.sin(t * 1.3) * 0.1;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  // Wings behind the body (far wing darker)
+  const wing = (rot, col, bone) => {
+    ctx.save(); ctx.translate(-8, -158 + breathe); ctx.rotate(rot);
+    const tips = [[-150, -150], [-168, -70], [-145, -15], [-95, 28]];
+    ctx.fillStyle = C(col);
+    ctx.beginPath(); ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-60, -125, tips[0][0], tips[0][1]);
+    ctx.quadraticCurveTo(-125, -95, tips[1][0], tips[1][1]);
+    ctx.quadraticCurveTo(-118, -48, tips[2][0], tips[2][1]);
+    ctx.quadraticCurveTo(-92, -14, tips[3][0], tips[3][1]);
+    ctx.quadraticCurveTo(-45, 6, 0, 22);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = C(bone); ctx.lineWidth = 4;
+    for (const [x, y] of tips) { ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(x * 0.45, y * 0.65 - 10, x, y); ctx.stroke(); }
+    ctx.fillStyle = C(GOLD);
+    poly(ctx, 0, 0, 7, 5, t); ctx.fill();
+    ctx.restore();
+  };
+  wing(0.05 + flap, '#211233', '#8a7a64');
+  wing(-0.32 - flap, '#3a1f58', BONE);
+
+  // Tail with spikes
+  for (let i = 14; i >= 0; i--) {
+    const k = i / 14;
+    const x = -38 - k * 125, y = -46 + k * 34 + Math.sin(t * 2 + k * 4) * 7 * k;
+    ctx.fillStyle = C(i % 2 ? ARMOR : PLATE);
+    circle(ctx, x, y, 20 * (1 - k) + 5); ctx.fill();
+    if (i % 3 === 1) { ctx.fillStyle = C(BONE); ctx.beginPath(); ctx.moveTo(x - 6, y - 14 * (1 - k) - 4); ctx.lineTo(x, y - 30 * (1 - k) - 10); ctx.lineTo(x + 6, y - 14 * (1 - k) - 4); ctx.closePath(); ctx.fill(); }
+  }
+
+  // Far arm (behind the body)
+  const shoulderY = -160 + breathe;
+  const arm = (sx, ang, dark) => {
+    const ex = sx + Math.cos(ang) * 44, ey = shoulderY + 12 + Math.sin(ang) * 44;
+    const hx = ex + Math.cos(ang - 0.5) * 40, hy = ey + Math.sin(ang - 0.5) * 40;
+    ctx.strokeStyle = C(dark ? '#1f142c' : ARMOR); ctx.lineWidth = 24;
+    ctx.beginPath(); ctx.moveTo(sx, shoulderY + 12); ctx.lineTo(ex, ey); ctx.lineTo(hx, hy); ctx.stroke();
+    ctx.strokeStyle = C(dark ? PLATE : PLATE_HI); ctx.lineWidth = 12;
+    ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo((ex + hx) / 2, (ey + hy) / 2); ctx.stroke();
+    ctx.strokeStyle = C(BONE); ctx.lineWidth = 4;
+    for (const o of [-0.5, 0, 0.5]) {
+      const a = ang - 0.5 + o;
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.quadraticCurveTo(hx + Math.cos(a) * 14, hy + Math.sin(a) * 14 - 4, hx + Math.cos(a + 0.4) * 24, hy + Math.sin(a + 0.4) * 24); ctx.stroke();
+    }
+  };
+  arm(-6, 1.25 - atk * 0.6, true);
+
+  // Legs
+  for (const [lx, dark] of [[-32, true], [20, false]]) {
+    ctx.fillStyle = C(dark ? '#38235a' : PLATE);
+    ellipse(ctx, lx, -62, 26, 36); ctx.fill();
+    ctx.fillStyle = C(dark ? '#1f142c' : ARMOR);
+    rrect(ctx, lx - 13, -46, 26, 42, 9); ctx.fill();
+    ctx.fillStyle = C(BONE);
+    for (const o of [0, 9, 18]) { ctx.beginPath(); ctx.moveTo(lx + o - 2, -6); ctx.lineTo(lx + o + 9, -1); ctx.lineTo(lx + o - 1, 1); ctx.closePath(); ctx.fill(); }
+  }
+
+  // Body
+  ctx.fillStyle = C(ARMOR);
+  ellipse(ctx, 4, -112 + breathe, 60, 66); ctx.fill();
+  ctx.strokeStyle = OUTLINE; ctx.lineWidth = 2.5; ctx.stroke();
+  for (let i = 0; i < 4; i++) {
+    ctx.fillStyle = C(i % 2 ? PLATE : PLATE_HI);
+    ctx.beginPath(); ctx.ellipse(18, -150 + i * 22 + breathe, 40 - i * 3, 14, 0.15, 0, Math.PI); ctx.fill();
+  }
+  const pulse = 0.55 + 0.35 * Math.sin(t * 3);
+  glow(ctx, 24, -112 + breathe, 52, CORE, 0.45 * pulse + atk * 0.3);
+  ctx.fillStyle = C('#f0d6ff'); diamond(ctx, 24, -110 + breathe, 8, 14); ctx.fill();
+  // Shoulder plate with spikes
+  ctx.fillStyle = C(PLATE_HI); ellipse(ctx, 36, shoulderY + 4, 30, 20, -0.2); ctx.fill();
+  ctx.strokeStyle = OUTLINE; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = C(GOLD);
+  for (const o of [-16, 0, 16]) { ctx.beginPath(); ctx.moveTo(36 + o - 6, shoulderY - 10); ctx.lineTo(36 + o - 2, shoulderY - 32 + Math.abs(o) * 0.6); ctx.lineTo(36 + o + 6, shoulderY - 10); ctx.closePath(); ctx.fill(); }
+
+  // Neck and head
+  const hx = 84 + atk * 14, hy = -212 + breathe - atk * 6;
+  ctx.strokeStyle = C(ARMOR); ctx.lineWidth = 34;
+  ctx.beginPath(); ctx.moveTo(34, shoulderY - 4); ctx.quadraticCurveTo(50, hy + 30, hx - 14, hy + 6); ctx.stroke();
+  ctx.strokeStyle = C(PLATE); ctx.lineWidth = 6;
+  for (let i = 0; i < 3; i++) { const k = 0.3 + i * 0.22; ctx.beginPath(); ctx.arc(34 + (hx - 48) * k, shoulderY - 4 + (hy - shoulderY + 10) * k, 14, -2.6, -1.2); ctx.stroke(); }
+  // Horns (behind the skull)
+  ctx.fillStyle = C(GOLD);
+  const horn = (bx, by, tx, ty, w) => { ctx.beginPath(); ctx.moveTo(bx - w, by); ctx.quadraticCurveTo((bx + tx) / 2 - 18, (by + ty) / 2 - 4, tx, ty); ctx.quadraticCurveTo((bx + tx) / 2 + 4, (by + ty) / 2 + 8, bx + w, by + 4); ctx.closePath(); ctx.fill(); };
+  horn(hx - 18, hy - 14, hx - 70, hy - 66, 9);
+  horn(hx - 4, hy - 20, hx - 30, hy - 82, 8);
+  horn(hx + 10, hy - 18, hx + 4, hy - 62, 6);
+  // Lower jaw opens when attacking
+  ctx.save(); ctx.translate(hx - 6, hy + 6); ctx.rotate(0.12 + atk * 0.45);
+  ctx.fillStyle = C(PLATE); ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(46, 0); ctx.lineTo(40, 12); ctx.lineTo(0, 10); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = C(BONE); for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(12 + i * 9, -2); ctx.lineTo(16 + i * 9, -9); ctx.lineTo(20 + i * 9, -2); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+  // Skull and snout
+  ctx.fillStyle = C(PLATE_HI);
+  ctx.beginPath(); ctx.moveTo(hx - 30, hy - 4); ctx.quadraticCurveTo(hx - 24, hy - 30, hx + 6, hy - 24); ctx.lineTo(hx + 46, hy - 6); ctx.lineTo(hx + 44, hy + 6); ctx.lineTo(hx - 24, hy + 12); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = OUTLINE; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = C(BONE); for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(hx + 8 + i * 9, hy + 4); ctx.lineTo(hx + 12 + i * 9, hy + 12); ctx.lineTo(hx + 16 + i * 9, hy + 4); ctx.closePath(); ctx.fill(); }
+  ctx.fillStyle = C('#1b1028'); ctx.beginPath(); ctx.moveTo(hx - 4, hy - 16); ctx.lineTo(hx + 22, hy - 10); ctx.lineTo(hx + 2, hy - 8); ctx.closePath(); ctx.fill();
+  glow(ctx, hx + 10, hy - 12, 16, EYE, 0.9);
+  ctx.fillStyle = '#fff2c8'; circle(ctx, hx + 10, hy - 12, 2.8); ctx.fill();
+  // Breath when attacking
+  if (atk > 0.05) { glow(ctx, hx + 62, hy + 10, 60 * atk, CORE, 0.85); glow(ctx, hx + 62, hy + 10, 26 * atk, '#ffe0ff', 0.9); }
+
+  // Near arm (in front)
+  arm(30, 1.05 - atk * 1.3, false);
+}
+
 function drawMonster(ctx, m, t, pose) {
   const hurt = pose.hurt || 0;
   const C = c => (hurt > 0.02 ? mix(c, '#ffffff', hurt * 0.6) : c);
@@ -554,28 +669,9 @@ function drawMonster(ctx, m, t, pose) {
       glow(ctx, 0, -36, 70, '#5fe0d8', 0.18 + 0.08 * Math.sin(t * 2));
       break;
     }
-    case 'wyrm': {
-      const segs = 9;
-      for (let i = segs; i >= 0; i--) {
-        const k = i / segs;
-        const x = -70 + k * 120, y = -30 - Math.sin(t * 2 + k * 5) * 16 * (1 - k * 0.5) - k * 30;
-        ctx.fillStyle = C(i % 2 ? '#5a2a7a' : '#6e3690');
-        circle(ctx, x, y, 22 - k * 6 + (i === segs ? 6 : 0)); ctx.fill();
-        if (i === 4) {
-          ctx.fillStyle = C('#9a5ac8');
-          for (const sg of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - 30, y - 70 - Math.sin(t * 3) * 14, x + sg * 30 - 10, y - 90); ctx.quadraticCurveTo(x + 10, y - 40, x + 20, y); ctx.fill(); }
-        }
-      }
-      const hx = 60, hy = -66 - Math.sin(t * 2 + 5) * 8;
-      ctx.fillStyle = C('#7d40a6'); ellipse(ctx, hx, hy, 26, 18); ctx.fill();
-      ctx.strokeStyle = OUTLINE; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = C('#f2e6cf');
-      for (const sg of [-1, 1]) { ctx.beginPath(); ctx.moveTo(hx - 8, hy - 12); ctx.lineTo(hx - 22 + sg * 4, hy - 40); ctx.lineTo(hx + 2, hy - 14); ctx.fill(); }
-      glow(ctx, hx + 10, hy - 4, 14, '#ff9a3a', 0.9);
-      ctx.fillStyle = '#fff1b0'; circle(ctx, hx + 10, hy - 4, 3); ctx.fill();
-      if (pose.atk >= 0) glow(ctx, hx + 36, hy + 6, 40 * Math.sin(pose.atk * Math.PI), '#ff7a2a', 0.8);
+    case 'wyrm':
+      drawLord(ctx, t, pose, C);
       break;
-    }
     default: break;
   }
   ctx.restore();

@@ -93,7 +93,7 @@ const MONSTERS = {
   crab: { name: 'Shell Crab', hp: 1150, ad: 28, r: 30, gold: 65, xp: 85, respawn: 60, first: 25 },
   wolf: { name: 'Dusk Wolf', hp: 1200, ad: 34, r: 30, gold: 65, xp: 90, respawn: 60, first: 25 },
   turtle: { name: 'Tidewarden', hp: 6500, ad: 90, r: 62, gold: 120, xp: 220, boss: true, team: true, respawn: 120, first: 120 },
-  wyrm: { name: 'Elder Wyrm', hp: 13000, ad: 150, r: 74, gold: 160, xp: 300, boss: true, team: true, buff: 'wyrm', respawn: 180, first: 480 },
+  wyrm: { name: 'Lord', hp: 13000, ad: 150, r: 74, gold: 160, xp: 300, boss: true, team: true, buff: 'wyrm', respawn: 180, first: 480 },
 };
 // Camps on the blue half; red camps are mirrored copies. Bosses sit in the river.
 const CAMPS = (() => {
