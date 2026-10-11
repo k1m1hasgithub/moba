@@ -73,7 +73,7 @@ function makeHero(s, seat) {
   const f = D.FOUNTAIN[team];
   const a = (team === BLUE ? -Math.PI / 4 : Math.PI * 3 / 4) + (role - 2) * 0.35;
   const h = unit({
-    kind: 'hero', seat, team, role, def, human: !!s.human, local: !!s.local, peer: s.peer || null, autoBuy: !s.human,
+    kind: 'hero', seat, team, role, def, human: !!s.human, local: !!s.local, peer: s.peer || null, autoBuy: !s.human, build: cleanBuild(s.build) || def.build,
     name: s.name || def.name, diff: s.diff || 'normal',
     x: f.x + Math.cos(a) * 110, y: f.y + Math.sin(a) * 110, r: 26, facing: a,
     level: 1, xp: 0, gold: 300, goldTotal: 300, items: [], cds: { s1: 0, s2: 0, ult: 0 },
@@ -1059,10 +1059,22 @@ function sellItem(h, id) {
   ev('sell', { seat: h.seat, item: id });
   return true;
 }
-// Next finished item of the hero's recommended build that it doesn't own yet.
+// A player's own build: known items in order, at most six, one pair of boots. null means "use the
+// hero's recommended build".
+function cleanBuild(ids) {
+  if (!Array.isArray(ids)) return null;
+  const out = [];
+  for (const id of ids) {
+    const it = D.ITEM[id];
+    if (!it || out.length >= 6 || (it.boots && out.some(o => D.ITEM[o].boots))) continue;
+    out.push(id);
+  }
+  return out.length ? out : null;
+}
+// Next item of the hero's build (their own or the recommended one) that it doesn't own yet.
 function nextRecommended(h) {
   const left = h.items.slice();
-  for (const id of h.def.build) {
+  for (const id of h.build || h.def.build) {
     const k = left.indexOf(id);
     if (k >= 0) { left.splice(k, 1); continue; }
     if (D.ITEM[id].boots && h.items.some(i => D.ITEM[i].boots && D.ITEM[i].tier === 2)) continue;
@@ -1141,7 +1153,7 @@ function update(dt) {
 }
 
 LF.sim = {
-  createGame, update, cast, startRecall, canBuy, purchasePlan, partCredit, nextRecommended, nextPurchase, SELL_RATE, PART_CREDIT, pickAttackTarget, isTargetable, isStructure, validFoe, seen,
+  createGame, update, cast, startRecall, canBuy, purchasePlan, partCredit, cleanBuild, nextRecommended, nextPurchase, SELL_RATE, PART_CREDIT, pickAttackTarget, isTargetable, isStructure, validFoe, seen,
   dist, gap, clamp, rand, moveToward, emptyInput, skillValue, hasBuff, enemyUnitsNear,
   get G() { return G; },
 };

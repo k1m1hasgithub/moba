@@ -15,6 +15,7 @@ const S = {
   target: null, targetSeq: 0, targetDirty: false,
   recallSeq: 0, recallDirty: false,
   click: null,
+  build: null,              // the player's own build for this match (item ids), null = recommended
   shop: [], netShop: [], shopSeq: 0, autoBuy: (() => { try { return localStorage.getItem('lf-autobuy') === '1'; } catch (e) { return false; } })(),
 };
 let canvas, ui = {};
@@ -331,6 +332,7 @@ function toNet() {
     c: S.netCasts.slice(),
     sh: S.netShop.slice(),
     ab: S.autoBuy ? 1 : 0,
+    bd: S.build ? S.build.map(id => D.ITEM_INDEX[id]) : 0,
   };
 }
 
@@ -344,6 +346,13 @@ function shop(op, id) {
 function setAutoBuy(on) {
   S.autoBuy = !!on;
   try { localStorage.setItem('lf-autobuy', on ? '1' : '0'); } catch (e) { /* ignore */ }
+}
+
+// Use this build for the hero we play (the sim hero locally, the mirror hero on a client; a client's
+// host hears about it through the input stream).
+function setBuild(ids, h) {
+  S.build = LF.sim.cleanBuild(ids);
+  if (h) h.build = S.build || h.def.build;
 }
 
 function setView(v) { S.view = v; }
@@ -367,5 +376,5 @@ function aimState() {
   return S.aim.x !== undefined ? S.aim : null;
 }
 
-LF.input = { init, applyLocal, toNet, setView, enable, reset, shop, setAutoBuy, aimState, hoverTarget, get click() { return S.click; }, state: S };
+LF.input = { init, applyLocal, toNet, setView, enable, reset, shop, setAutoBuy, setBuild, aimState, hoverTarget, get click() { return S.click; }, state: S };
 })(window.LF);

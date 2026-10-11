@@ -79,11 +79,14 @@ function enterGame(v) {
   LF.render.snap(v.player || { x: 1800, y: 1800 });
   LF.input.reset();
   LF.input.setView(v);
+  // The player's saved build for this hero (if any) drives auto-buy and the quick-buy button.
+  LF.input.setBuild(v.player ? LF.ui.builds.get(v.player.def.id) : null, v.player);
   LF.input.enable(true);
   LF.ui.show(null, false);
   $('hud').hidden = false;
   $('scoreboard').hidden = true;
   $('shop').hidden = true;
+  $('buildEd').hidden = true;
   LF.render.resize();
   LF.ui.setupHud(v);
   endShown = false; endTimer = 0; paused = false; acc = 0;
@@ -218,10 +221,12 @@ function pause(on) {
 function quit() {
   LF.input.enable(false);
   $('shop').hidden = true;
+  $('buildEd').hidden = true;
   $('hud').hidden = true;
   toMenu();
 }
 function escape() {
+  if (!$('buildEd').hidden) { LF.ui.closeBuild(); return; }
   if (!$('scoreboard').hidden) { $('scoreboard').hidden = true; return; }
   if (!$('shop').hidden) { $('shop').hidden = true; return; }
   if (inGame() && !endShown) { pause($('pause').hidden); return; }

@@ -51,6 +51,11 @@ for the next item. Unique attributes and passives count once even if you own two
 Each hero has a recommended build; the "Next" line on your hero panel buys the next piece toward it in one
 click, or turn on auto-buy in the shop.
 
+**Your own builds**: on the hero select screen, in a lobby or from the in-game shop, "Customize build"
+opens the full item list. Pick up to six items in the order you want them (one pair of boots); the build is
+saved per hero in your browser, and auto-buy and the quick-buy button follow it instead of the recommended
+one. It works in multiplayer too: your build travels to the host with your inputs.
+
 ## Heroes
 
 | Role | Lane | Heroes |

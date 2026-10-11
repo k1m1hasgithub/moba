@@ -444,6 +444,14 @@ body.touch .act kbd { display: none; }
 .bag-slot { width: 44px; height: 44px; }
 .bag-slot.empty { border-style: dashed; cursor: default; }
 .dbuild { margin-top: 12px; }
+.dbuild .btn { margin-top: 8px; }
+#lobbyBuild:empty { display: none; }
+#buildEd { z-index: 6; }
+.link-btn { border: 0; background: none; padding: 0 2px; color: var(--gold); font: 600 12.5px var(--body); text-decoration: underline; text-underline-offset: 2px; }
+.be-face { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--gold-deep); background: var(--panel-2); }
+.be-actions { display: grid; gap: 6px; }
+.rec-item.empty { display: grid; place-items: center; border-style: dashed; color: var(--muted); font-weight: 700; font-size: 13px; cursor: default; }
+.rec-item.picked { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
 .dbuild .itemrow img { width: 34px; height: 34px; border-radius: 6px; }
 .dbuild p { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
 .next-item { border: 1px solid transparent; background: none; padding: 1px 2px; border-radius: 4px; width: 100%; text-align: left; }
@@ -464,6 +472,8 @@ body.touch .act kbd { display: none; }
   #buyNext { padding: 6px 12px; font-size: 13px; }
   .shop-items { max-height: 150px; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
   .shop-detail { max-height: 200px; padding: 8px 10px; gap: 6px; }
+  .be-actions { grid-template-columns: auto auto; }
+  .be-face { width: 30px; height: 30px; }
   .shop-filters { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
   .shop-filters .tier-tabs, .shop-filters .role-tabs { flex-wrap: nowrap; flex: none; gap: 4px; }
   .shop-filters .role-tab { padding: 3px 10px; font-size: 12.5px; white-space: nowrap; }

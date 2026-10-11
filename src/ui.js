@@ -167,6 +167,8 @@ function init() {
   $('howRoles').innerHTML = D.ROLES.map(r => `<dt>${r.name}</dt><dd>${r.desc} ${heroNames(r.id)}</dd>`).join('');
   $('scoreClose').addEventListener('click', () => showScore(false));
   initShop();
+  // "Customize build" buttons on the hero select screen and in the lobby.
+  document.addEventListener('click', e => { const b = e.target.closest('[data-edit-build]'); if (b) { click(); openBuild(b.dataset.editBuild); } });
   $('btnScore').addEventListener('click', () => showScore($('scoreboard').hidden));
   for (const id of ['btnSound', 'soundToggle', 'pauseSound']) $(id).addEventListener('click', toggleSound);
   window.addEventListener('keydown', e => {
@@ -244,7 +246,7 @@ function renderDetail(id) {
     meter('Range', s.range / 400) + meter('Mobility', (s.ms - 250) / 55 + (h.skills.some(k => ['dash', 'leap', 'blink'].includes(k.type)) ? 0.3 : 0));
   const sk = h.skills.map(k => `<li><img src="${skillIcon(id, k.key)}" alt=""><div><strong>${k.key === 'ult' ? 'Ultimate · ' : ''}${esc(k.name)}<em>${k.cd}s · ${k.mana} mana</em></strong><p>${esc(k.desc)}</p></div></li>`).join('');
   $('dSkills').innerHTML = `<li><img src="${A.portrait(id, 40)}" alt=""><div><strong>Passive · ${esc(h.passive.name)}</strong><p>${esc(h.passive.desc)}</p></div></li>` + sk;
-  $('dBuild').innerHTML = `<p class="eyebrow">Recommended build</p><div class="itemrow">${h.build.map(i => `<img src="${itemIcon(i)}" alt="${esc(D.ITEM[i].name)}" title="${esc(D.ITEM[i].name)}: ${esc(D.ITEM[i].text)}">`).join('')}</div><p>${esc(h.buildNote)}</p>`;
+  $('dBuild').innerHTML = buildBlockHtml(id);
 }
 function startShowcase() {
   cancelAnimationFrame(sel.raf);
@@ -305,7 +307,7 @@ function renderLobbyList(tr) {
     const row = document.createElement('div');
     row.className = 'lobby-row';
     const info = document.createElement('div');
-    const name = document.createElement('strong'); name.textContent = LF.net.cleanName(lb.n).slice(0, 24) || 'Lobby';
+    const name = document.createElement('strong'); name.textContent = LF.net.cleanName(lb.n, 24);
     const host = document.createElement('small'); host.textContent = 'Host: ' + LF.net.cleanName(p.presence.nm);
     info.append(name, host);
     const pill = document.createElement('span');
@@ -395,6 +397,7 @@ function renderLobby() {
     log.appendChild(line);
   }
   if (atBottom) log.scrollTop = log.scrollHeight;
+  renderLobbyBuild();
 }
 
 // ---------------------------------------------------------------------------
@@ -590,19 +593,95 @@ function denyReason(key, why) {
 }
 
 // ---------------------------------------------------------------------------
-// Shop
+// Item catalog (shared by the shop and the build editor)
 // ---------------------------------------------------------------------------
 const SHOP_TABS = ['All', 'Attack', 'Magic', 'Defense', 'Movement', 'Jungle'];
 const TIERS = [['all', 'All tiers'], ['1', 'Tier 1'], ['2', 'Tier 2'], ['3', 'Tier 3']];
 const TIER_NOTE = { 1: 'Tier 1 · finished items with a unique passive', 2: 'Tier 2 · crafted from Tier 3', 3: 'Tier 3 · basic pieces' };
+const tierBadge = t => `<i class="tb t${t}" title="Tier ${t}">T${t}</i>`;
+// Filters for a catalog: tier pills and category tabs. `st` holds { cat, tier }.
+function initFilters(tiersEl, tabsEl, st, redraw) {
+  tabsEl.innerHTML = SHOP_TABS.map(t => `<button class="role-tab" role="tab" type="button" data-cat="${t}">${t}</button>`).join('');
+  tiersEl.innerHTML = TIERS.map(([k, t]) => `<button class="tier-tab" type="button" data-tier="${k}">${k === 'all' ? '' : `<i class="dot t${k}"></i>`}${t}</button>`).join('');
+  tabsEl.addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (b) { st.cat = b.dataset.cat; click(); redraw(); } });
+  tiersEl.addEventListener('click', e => { const b = e.target.closest('[data-tier]'); if (b) { st.tier = b.dataset.tier; click(); redraw(); } });
+}
+function syncFilters(tiersEl, tabsEl, st) {
+  tabsEl.querySelectorAll('[data-cat]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.cat === st.cat)));
+  tiersEl.querySelectorAll('[data-tier]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tier === st.tier)));
+}
+// Item cards grouped by tier. With a hero, prices account for the parts it owns.
+function catalogHtml(st, h, count) {
+  const card = it => {
+    const c = h ? LF.sim.purchasePlan(h.items, it.id).cost : it.cost;
+    const n = count ? count(it.id) : 0;
+    return `<button class="shop-card${h && h.gold < c ? ' poor' : ''}" type="button" data-id="${it.id}" aria-pressed="${it.id === st.sel}"><img src="${itemIcon(it.id)}" alt="">${tierBadge(it.tier)}<span><strong>${esc(it.name)}</strong><small>${c}${c < it.cost ? `<s>${it.cost}</s>` : ''}</small></span>${n ? `<span class="count">×${n}</span>` : ''}</button>`;
+  };
+  let html = '';
+  for (const t of [1, 2, 3]) {
+    if (st.tier !== 'all' && +st.tier !== t) continue;
+    const list = D.ITEMS.filter(it => it.tier === t && (st.cat === 'All' || it.cat === st.cat));
+    if (list.length) html += `<p class="tier-head">${TIER_NOTE[t]}</p>` + list.map(card).join('');
+  }
+  return html || '<p class="tier-head">Nothing here.</p>';
+}
+// Recipe tree: the item on top, its components below. Parts the hero already owns are marked with the
+// amount they take off and not expanded, matching how the shop spends them.
+function recipeTree(items, id, sel) {
+  const pool = items.slice();
+  const node = (iid, top) => {
+    const it = D.ITEM[iid];
+    const k = top ? -1 : pool.indexOf(iid);
+    if (k >= 0) pool.splice(k, 1);
+    const own = k >= 0;
+    const kids = !own && it.from ? `<div class="t-kids">${it.from.map(c => node(c, false)).join('')}</div>` : '';
+    return `<div class="t-branch"><button class="t-node${own ? ' own' : ''}${iid === sel ? ' sel' : ''}" type="button" data-id="${iid}" title="${esc(it.name)}"><img src="${itemIcon(iid)}" alt="${esc(it.name)}"><small>${own ? '−' + LF.sim.partCredit(iid) : it.cost}</small></button>${kids}</div>`;
+  };
+  return node(id, true);
+}
+// Everything about an item except the action buttons.
+function itemInfoHtml(it, items, sel) {
+  const list = (cls, lines) => lines.length ? `<ul class="${cls}">${lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : '';
+  return `<div class="sd-top"><img src="${itemIcon(it.id)}" alt=""><div><small>${tierBadge(it.tier)} Tier ${it.tier} · ${it.cat} · ${it.cost} gold</small><h3>${esc(it.name)}</h3></div></div>
+    <p class="sd-desc">${esc(it.desc)}</p>
+    <div class="sd-attrs-row"><div class="sd-attrs"><span class="sd-label">Attributes</span>${list('sd-stats', it.lines)}</div>
+    ${it.uniqueLines.length ? `<div class="sd-attrs"><span class="sd-label uniq">Unique attributes</span>${list('sd-uniq', it.uniqueLines)}</div>` : ''}</div>
+    ${it.passive ? `<div class="sd-passive"><span class="sd-label">Unique passive · ${esc(it.passive.name)}</span><p>${esc(it.passive.text)}</p></div>` : ''}
+    ${it.from ? `<div class="sd-recipe"><span class="sd-label">Recipe <em>parts you own count for ${Math.round(LF.sim.PART_CREDIT * 100)}% of their price</em></span><div class="tree">${recipeTree(items, it.id, sel)}</div></div>` : ''}
+    ${it.into.length ? `<div class="sd-into"><span class="sd-label">Builds into</span><div class="into">${it.into.map(i => `<button class="t-node" type="button" data-id="${i}" title="${esc(D.ITEM[i].name)}"><img src="${itemIcon(i)}" alt="${esc(D.ITEM[i].name)}"></button>`).join('')}</div></div>` : ''}`;
+}
+// Six item buttons for a build; `mark(id, i)` adds classes.
+function buildRowHtml(build, sel, mark) {
+  return build.map((id, i) => {
+    const it = D.ITEM[id];
+    return `<button class="rec-item${mark ? mark(id, i) : ''}" type="button" data-id="${id}" data-slot="${i}" aria-pressed="${id === sel}" title="${esc(it.name)} · ${it.cost}"><img src="${itemIcon(id)}" alt="${esc(it.name)}"></button>`;
+  }).join('');
+}
+
+// ---------------------------------------------------------------------------
+// Saved builds: one per hero, kept in this browser. null means "use the recommended build".
+// ---------------------------------------------------------------------------
+const builds = {
+  all() { try { return JSON.parse(localStorage.getItem('lf-builds') || '{}') || {}; } catch (e) { return {}; } },
+  get(heroId) { return LF.sim.cleanBuild(this.all()[heroId]); },
+  set(heroId, ids) {
+    const all = this.all();
+    const clean = LF.sim.cleanBuild(ids);
+    if (clean) all[heroId] = clean; else delete all[heroId];
+    try { localStorage.setItem('lf-builds', JSON.stringify(all)); } catch (e) { /* ignore */ }
+    return clean;
+  },
+  of(heroId) { return this.get(heroId) || D.HERO[heroId].build; },
+};
+
+// ---------------------------------------------------------------------------
+// Shop
+// ---------------------------------------------------------------------------
 const shopSt = { cat: 'All', tier: 'all', sel: null, sig: '', busy: 0 };
 const WHY_BUY = { full: 'Your six item slots are full. Sell something first.', boots: 'You can only carry one pair of boots.', gold: '' };
 function shopHero() { const v = LF.main.view(); return v && v.player; }
 function initShop() {
-  $('shopTabs').innerHTML = SHOP_TABS.map(t => `<button class="role-tab" role="tab" type="button" data-cat="${t}">${t}</button>`).join('');
-  $('shopTiers').innerHTML = TIERS.map(([k, t]) => `<button class="tier-tab" type="button" data-tier="${k}">${k === 'all' ? '' : `<i class="dot t${k}"></i>`}${t}</button>`).join('');
-  $('shopTabs').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (b) { shopSt.cat = b.dataset.cat; click(); renderShop(true); } });
-  $('shopTiers').addEventListener('click', e => { const b = e.target.closest('[data-tier]'); if (b) { shopSt.tier = b.dataset.tier; click(); renderShop(true); } });
+  initFilters($('shopTiers'), $('shopTabs'), shopSt, () => renderShop(true));
   const pick = e => { const b = e.target.closest('[data-id]'); if (b && b.dataset.id) { shopSt.sel = b.dataset.id; LF.audio.play('hover', 1); renderShop(true); } };
   $('shopItems').addEventListener('click', pick);
   $('recItems').addEventListener('click', pick);
@@ -614,6 +693,7 @@ function initShop() {
   });
   $('buyNext').addEventListener('click', () => { const h = shopHero(); const n = h && LF.sim.nextPurchase(h); if (n) order('buy', n.id); });
   $('autoBuy').addEventListener('change', e => { LF.input.setAutoBuy(e.target.checked); renderShop(true); });
+  $('editBuild').addEventListener('click', () => { const h = shopHero(); if (h) { click(); openBuild(h.def.id); } });
   $('shopClose').addEventListener('click', () => toggleShop(false));
   $('btnShop').addEventListener('click', () => toggleShop());
   $('shop').addEventListener('pointerdown', e => { if (e.target.id === 'shop') toggleShop(false); });
@@ -621,6 +701,7 @@ function initShop() {
     const h = shopHero(), id = $('nextItem').dataset.id;
     if (h && id && !LF.sim.canBuy(h, id)) order('buy', id); else toggleShop(true);
   });
+  initBuild();
 }
 function order(op, id) {
   if (performance.now() < shopSt.busy) return;
@@ -636,41 +717,28 @@ function toggleShop(force) {
   el.hidden = !open;
   if (open) { shopSt.sel = null; renderShop(true); }
 }
-const tierBadge = t => `<i class="tb t${t}" title="Tier ${t}">T${t}</i>`;
-// Recipe tree: the item on top, its components below. Parts you already own are ticked and not expanded,
-// matching how the shop spends them.
-function recipeTree(h, id) {
-  const pool = h.items.slice();
-  const node = (iid, top) => {
-    const it = D.ITEM[iid];
-    const k = top ? -1 : pool.indexOf(iid);
-    if (k >= 0) pool.splice(k, 1);
-    const own = k >= 0;
-    const kids = !own && it.from ? `<div class="t-kids">${it.from.map(c => node(c, false)).join('')}</div>` : '';
-    return `<div class="t-branch"><button class="t-node${own ? ' own' : ''}${iid === shopSt.sel ? ' sel' : ''}" type="button" data-id="${iid}" title="${esc(it.name)}"><img src="${itemIcon(iid)}" alt="${esc(it.name)}"><small>${own ? '−' + LF.sim.partCredit(iid) : it.cost}</small></button>${kids}</div>`;
-  };
-  return node(id, true);
-}
 function renderShop(force) {
   if ($('shop').hidden) return;
   const h = shopHero();
   if (!h) return;
   const next = LF.sim.nextRecommended(h);
+  const build = h.build || h.def.build;
+  const custom = !!LF.input.state.build;
   if (!shopSt.sel || !D.ITEM[shopSt.sel]) shopSt.sel = next || D.ITEMS[0].id;
-  const sig = [Math.floor(h.gold), h.items.join(), shopSt.cat, shopSt.tier, shopSt.sel, LF.input.state.autoBuy].join('|');
+  const sig = [Math.floor(h.gold), h.items.join(), build.join(), shopSt.cat, shopSt.tier, shopSt.sel, LF.input.state.autoBuy].join('|');
   if (!force && sig === shopSt.sig) return;
   shopSt.sig = sig;
   $('shopGold').textContent = Math.floor(h.gold);
   $('autoBuy').checked = !!LF.input.state.autoBuy;
+  $('recLabel').textContent = custom ? 'Your build for ' : 'Recommended for ';
   $('recHero').textContent = h.def.name;
-  $('recNote').textContent = h.def.buildNote;
+  $('recNote').textContent = custom ? 'Your own build. Auto-buy and "Buy next" follow it, piece by piece.' : h.def.buildNote;
   const left = h.items.slice();
-  $('recItems').innerHTML = h.def.build.map(id => {
+  $('recItems').innerHTML = buildRowHtml(build, shopSt.sel, id => {
     const k = left.indexOf(id), owned = k >= 0;
     if (owned) left.splice(k, 1);
-    const it = D.ITEM[id];
-    return `<button class="rec-item${owned ? ' owned' : ''}${id === next ? ' next' : ''}" type="button" data-id="${id}" aria-pressed="${id === shopSt.sel}" title="${esc(it.name)} · ${it.cost}"><img src="${itemIcon(id)}" alt="${esc(it.name)}"></button>`;
-  }).join('');
+    return (owned ? ' owned' : '') + (id === next ? ' next' : '');
+  });
   const bn = $('buyNext');
   const np = LF.sim.nextPurchase(h);
   if (np) {
@@ -682,37 +750,17 @@ function renderShop(force) {
     const why = LF.sim.canBuy(h, next);
     bn.textContent = why === 'gold' ? `Saving for ${D.ITEM[next].name}` : why === 'full' ? 'Slots full' : `Next: ${D.ITEM[next].name}`;
   } else { bn.disabled = true; bn.textContent = h.items.length >= 6 ? 'Slots full' : 'Build complete'; }
-  $('shopTabs').querySelectorAll('[data-cat]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.cat === shopSt.cat)));
-  $('shopTiers').querySelectorAll('[data-tier]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tier === shopSt.tier)));
-  const card = it => {
-    const n = h.items.filter(i => i === it.id).length;
-    const c = LF.sim.purchasePlan(h.items, it.id).cost;
-    return `<button class="shop-card${h.gold < c ? ' poor' : ''}" type="button" data-id="${it.id}" aria-pressed="${it.id === shopSt.sel}"><img src="${itemIcon(it.id)}" alt="">${tierBadge(it.tier)}<span><strong>${esc(it.name)}</strong><small>${c}${c < it.cost ? `<s>${it.cost}</s>` : ''}</small></span>${n ? `<span class="count">×${n}</span>` : ''}</button>`;
-  };
-  let html = '';
-  for (const t of [1, 2, 3]) {
-    if (shopSt.tier !== 'all' && +shopSt.tier !== t) continue;
-    const list = D.ITEMS.filter(it => it.tier === t && (shopSt.cat === 'All' || it.cat === shopSt.cat));
-    if (list.length) html += `<p class="tier-head">${TIER_NOTE[t]}</p>` + list.map(card).join('');
-  }
-  $('shopItems').innerHTML = html || '<p class="tier-head">Nothing here.</p>';
+  syncFilters($('shopTiers'), $('shopTabs'), shopSt);
+  $('shopItems').innerHTML = catalogHtml(shopSt, h, id => h.items.filter(i => i === id).length);
   const it = D.ITEM[shopSt.sel];
   const fresh = shopSt.shown !== it.id;
   shopSt.shown = it.id;
   const why = LF.sim.canBuy(h, it.id);
   const plan = LF.sim.purchasePlan(h.items, it.id);
   const owned = h.items.includes(it.id);
-  const recFor = h.def.build.includes(it.id);
   const short = why === 'gold' ? `Need ${plan.cost - Math.floor(h.gold)} more gold.` : WHY_BUY[why] || '';
-  const list = (cls, lines) => lines.length ? `<ul class="${cls}">${lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : '';
-  $('shopDetail').innerHTML = `<div class="sd-top"><img src="${itemIcon(it.id)}" alt=""><div><small>${tierBadge(it.tier)} Tier ${it.tier} · ${it.cat}</small><h3>${esc(it.name)}</h3></div></div>
-    <p class="sd-desc">${esc(it.desc)}</p>
-    <div class="sd-attrs-row"><div class="sd-attrs"><span class="sd-label">Attributes</span>${list('sd-stats', it.lines)}</div>
-    ${it.uniqueLines.length ? `<div class="sd-attrs"><span class="sd-label uniq">Unique attributes</span>${list('sd-uniq', it.uniqueLines)}</div>` : ''}</div>
-    ${it.passive ? `<div class="sd-passive"><span class="sd-label">Unique passive · ${esc(it.passive.name)}</span><p>${esc(it.passive.text)}</p></div>` : ''}
-    ${it.from ? `<div class="sd-recipe"><span class="sd-label">Recipe <em>parts you own count for ${Math.round(LF.sim.PART_CREDIT * 100)}% of their price</em></span><div class="tree">${recipeTree(h, it.id)}</div></div>` : ''}
-    ${it.into.length ? `<div class="sd-into"><span class="sd-label">Builds into</span><div class="into">${it.into.map(i => `<button class="t-node" type="button" data-id="${i}" title="${esc(D.ITEM[i].name)}"><img src="${itemIcon(i)}" alt="${esc(D.ITEM[i].name)}"></button>`).join('')}</div></div>` : ''}
-    ${recFor ? `<p class="sd-rec">Part of ${esc(h.def.name)}'s recommended build.</p>` : ''}
+  $('shopDetail').innerHTML = itemInfoHtml(it, h.items, shopSt.sel) + `
+    ${build.includes(it.id) ? `<p class="sd-rec">Part of ${custom ? 'your' : esc(h.def.name) + '\'s recommended'} build.</p>` : ''}
     <div class="sd-actions"><button class="btn primary" type="button" data-op="buy" data-item="${it.id}" ${why ? 'disabled' : ''}>${it.tier === 3 ? 'Buy' : 'Craft'} · ${plan.cost}</button>
     ${plan.used.length ? `<span class="sd-save">Your ${plan.used.map(u => esc(D.ITEM[u].name)).join(', ')} take ${plan.credit} off (full price ${it.cost})</span>` : ''}
     ${owned ? `<button class="btn" type="button" data-op="sell" data-item="${it.id}">Sell · ${Math.round(it.cost * LF.sim.SELL_RATE)}</button>` : ''}
@@ -722,6 +770,115 @@ function renderShop(force) {
     const id = h.items[i];
     return id ? `<button class="bag-slot" type="button" data-id="${id}" aria-pressed="${id === shopSt.sel}" title="${esc(D.ITEM[id].name)}"><img src="${itemIcon(id)}" alt="${esc(D.ITEM[id].name)}"></button>` : '<span class="bag-slot empty"></span>';
   }).join('');
+}
+
+// ---------------------------------------------------------------------------
+// Build editor: browse every item and plan up to six for a hero. Saved per hero; auto-buy and the
+// quick-buy button follow it in matches.
+// ---------------------------------------------------------------------------
+const be = { hero: null, build: [], custom: false, cat: 'All', tier: 'all', sel: null, slot: -1 };
+function initBuild() {
+  initFilters($('beTiers'), $('beTabs'), be, renderBuild);
+  const pick = e => {
+    const b = e.target.closest('[data-id]');
+    if (!b || !b.dataset.id) return;
+    be.sel = b.dataset.id; be.slot = b.dataset.slot !== undefined ? +b.dataset.slot : -1;
+    LF.audio.play('hover', 1); renderBuild();
+  };
+  $('beItems').addEventListener('click', pick);
+  $('beSlots').addEventListener('click', pick);
+  $('beDetail').addEventListener('click', e => {
+    const b = e.target.closest('[data-be]');
+    if (!b) { pick(e); return; }
+    if (b.disabled) return;
+    const list = be.build.slice(), i = be.slot;
+    if (b.dataset.be === 'add') { list.push(be.sel); be.slot = list.length - 1; }
+    else if (b.dataset.be === 'remove') { list.splice(i, 1); be.slot = -1; }
+    else if (b.dataset.be === 'left' && i > 0) { [list[i - 1], list[i]] = [list[i], list[i - 1]]; be.slot = i - 1; }
+    else if (b.dataset.be === 'right' && i < list.length - 1) { [list[i + 1], list[i]] = [list[i], list[i + 1]]; be.slot = i + 1; }
+    click();
+    saveBuild(list);
+  });
+  $('beReset').addEventListener('click', () => { click(); be.slot = -1; saveBuild(null); });
+  $('beClear').addEventListener('click', () => { click(); be.slot = -1; saveBuild([]); });
+  $('beAuto').addEventListener('change', e => { LF.input.setAutoBuy(e.target.checked); renderShop(true); });
+  $('beClose').addEventListener('click', () => { click(); closeBuild(); });
+  $('buildEd').addEventListener('pointerdown', e => { if (e.target.id === 'buildEd') closeBuild(); });
+}
+// An empty build is kept while editing but saved as "recommended".
+function saveBuild(list) {
+  const saved = builds.set(be.hero, list);
+  be.custom = !!list;
+  be.build = list ? list.slice() : D.HERO[be.hero].build.slice();
+  // Playing this hero right now? Switch the match over to the new build.
+  const h = LF.main.inGame() && shopHero();
+  if (h && h.def.id === be.hero) LF.input.setBuild(saved, h);
+  renderBuild();
+  renderShop(true);
+  if (!$('select').hidden) renderDetail(sel.hero);
+  renderLobbyBuild();
+}
+function openBuild(heroId) {
+  be.hero = heroId;
+  const own = builds.get(heroId);
+  be.custom = !!own;
+  be.build = (own || D.HERO[heroId].build).slice();
+  be.sel = be.build[0] || D.ITEMS[0].id; be.slot = be.build.length ? 0 : -1;
+  $('buildEd').hidden = false;
+  renderBuild();
+}
+function closeBuild() { $('buildEd').hidden = true; }
+function canAdd(id) {
+  if (be.build.length >= 6) return 'Your build already has six items. Remove one first.';
+  if (D.ITEM[id].boots && be.build.some(i => D.ITEM[i].boots)) return 'A build can only have one pair of boots.';
+  return '';
+}
+function renderBuild() {
+  if ($('buildEd').hidden) return;
+  const hd = D.HERO[be.hero];
+  $('beFace').src = A.portrait(hd.id, 48);
+  $('beTitle').textContent = `${hd.name}'s build`;
+  $('beAuto').checked = !!LF.input.state.autoBuy;
+  const total = be.build.reduce((s, id) => s + D.ITEM[id].cost, 0);
+  $('beHead').textContent = be.custom ? (be.build.length ? `Your build · ${total} gold` : 'Your build is empty') : `Recommended build · ${total} gold`;
+  $('beNote').textContent = be.custom
+    ? (be.build.length ? 'Auto-buy and "Buy next" buy these in order, piece by piece. Saved in this browser.' : 'Add items from the list. An empty build falls back to the recommended one.')
+    : `${hd.buildNote} Add, remove or reorder items to make it your own.`;
+  if (be.slot >= be.build.length) be.slot = -1;
+  $('beSlots').innerHTML = buildRowHtml(be.build, null, (id, i) => (i === be.slot ? ' picked' : '')) +
+    Array.from({ length: 6 - be.build.length }, (_, i) => `<span class="rec-item empty">${be.build.length + i + 1}</span>`).join('');
+  $('beReset').disabled = !be.custom;
+  syncFilters($('beTiers'), $('beTabs'), be);
+  $('beItems').innerHTML = catalogHtml(be, null, id => be.build.filter(i => i === id).length);
+  const it = D.ITEM[be.sel] || D.ITEMS[0];
+  const fresh = be.shown !== it.id;
+  be.shown = it.id;
+  const i = be.slot;
+  const why = canAdd(it.id);
+  const actions = i >= 0
+    ? `<button class="btn" type="button" data-be="left" ${i === 0 ? 'disabled' : ''} aria-label="Move earlier">◀ Earlier</button>
+       <button class="btn" type="button" data-be="right" ${i === be.build.length - 1 ? 'disabled' : ''} aria-label="Move later">Later ▶</button>
+       <button class="btn" type="button" data-be="remove">Remove</button><span class="sd-save">Slot ${i + 1} of your build</span>`
+    : `<button class="btn primary" type="button" data-be="add" ${why ? 'disabled' : ''}>Add to build</button>${why ? `<span class="sd-why">${esc(why)}</span>` : ''}`;
+  $('beDetail').innerHTML = itemInfoHtml(it, [], be.sel) + `<div class="sd-actions">${actions}</div>`;
+  if (fresh) $('beDetail').scrollTop = 0;
+}
+// The build row on the hero select screen and in the lobby.
+function buildBlockHtml(heroId) {
+  const own = builds.get(heroId), list = own || D.HERO[heroId].build;
+  return `<p class="eyebrow">${own ? 'Your build' : 'Recommended build'}</p><div class="itemrow">${list.map(i => `<img src="${itemIcon(i)}" alt="${esc(D.ITEM[i].name)}" title="${esc(D.ITEM[i].name)}: ${esc(D.ITEM[i].text)}">`).join('')}</div>
+    <p>${own ? 'Auto-buy follows your build in matches.' : esc(D.HERO[heroId].buildNote)}</p>
+    <button class="btn small" type="button" data-edit-build="${heroId}">${own ? 'Edit build' : 'Customize build'} · all items</button>`;
+}
+function renderLobbyBuild() {
+  const p = party, el = $('lobbyBuild');
+  if (!p || $('lobby').hidden) return;
+  const seat = p.mySeat(), s = seat >= 0 ? p.L.slots[seat] : null;
+  const heroId = s && D.HEROES[s.h] ? D.HEROES[s.h].id : null;
+  const key = heroId + '|' + JSON.stringify(heroId && builds.get(heroId));
+  if (el.dataset.key === key) return;
+  el.dataset.key = key;
+  el.innerHTML = heroId ? buildBlockHtml(heroId) : '';
 }
 
 // ---------------------------------------------------------------------------
@@ -767,6 +924,7 @@ function showScore(on) {
   if (on) renderScore(v, $('scoreBody'));
 }
 function showEnd(view, actions) {
+  closeBuild();
   const me = view.player;
   const won = me ? view.winner === me.team : view.winner === 0;
   $('endEyebrow').textContent = `Match over · ${fmtTime(view.t)}`;
@@ -790,6 +948,6 @@ function showEnd(view, actions) {
 
 LF.ui = {
   init, show, back, openSelect, mpStatus, renderLobbyList, openLobby, renderLobby, setupHud, updateHud, showScore, showEnd,
-  denyReason, skillIcon, itemIcon, toggleShop, get nick() { saveNick(); return nick; },
+  denyReason, skillIcon, itemIcon, toggleShop, openBuild, closeBuild, builds, get nick() { saveNick(); return nick; },
 };
 })(window.LF);

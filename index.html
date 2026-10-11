@@ -63,11 +63,11 @@
       <header class="sheet-head shop-head">
         <h2>Shop</h2>
         <span class="gold" id="shopGold">0</span>
-        <label class="toggle" for="autoBuy"><input type="checkbox" id="autoBuy"><span>Auto-buy recommended build</span></label>
+        <label class="toggle" for="autoBuy"><input type="checkbox" id="autoBuy"><span>Auto-buy my build</span></label>
         <button class="btn ghost" id="shopClose" type="button">Close <kbd>P</kbd></button>
       </header>
       <section class="rec">
-        <div class="rec-text"><strong>Recommended for <span id="recHero"></span></strong><p id="recNote"></p></div>
+        <div class="rec-text"><strong><span id="recLabel">Recommended for </span><span id="recHero"></span></strong> <button class="link-btn" id="editBuild" type="button">Edit build</button><p id="recNote"></p></div>
         <div class="rec-items" id="recItems"></div>
         <button class="btn primary" id="buyNext" type="button">Buy next</button>
       </section>
@@ -79,6 +79,30 @@
         <div class="shop-detail" id="shopDetail"></div>
       </div>
       <div class="shop-bag"><span class="eyebrow">Your items</span><div class="bag" id="shopBag"></div><span class="hint">Parts you own are used up and take 80% of their price off. Selling gives back 60%.</span></div>
+    </div>
+  </div>
+
+  <!-- ============ Build editor ============ -->
+  <div id="buildEd" class="overlay dim" hidden>
+    <div class="sheet shop-sheet build-sheet" role="dialog" aria-label="Build editor">
+      <header class="sheet-head shop-head">
+        <img class="be-face" id="beFace" alt="">
+        <h2 id="beTitle">Build</h2>
+        <label class="toggle" for="beAuto"><input type="checkbox" id="beAuto"><span>Auto-buy my build in matches</span></label>
+        <button class="btn ghost" id="beClose" type="button">Done</button>
+      </header>
+      <section class="rec be-build">
+        <div class="rec-text"><strong id="beHead"></strong><p id="beNote"></p></div>
+        <div class="rec-items" id="beSlots"></div>
+        <div class="be-actions"><button class="btn small" id="beReset" type="button">Use recommended</button><button class="btn small" id="beClear" type="button">Clear</button></div>
+      </section>
+      <div class="shop-grid">
+        <div class="shop-left">
+          <div class="shop-filters"><div class="tier-tabs" id="beTiers"></div><div class="role-tabs" id="beTabs" role="tablist"></div></div>
+          <div class="shop-items" id="beItems"></div>
+        </div>
+        <div class="shop-detail" id="beDetail"></div>
+      </div>
     </div>
   </div>
 
@@ -182,6 +206,7 @@
           <h3>Your hero</h3>
           <div class="mini-heroes" id="lobbyHeroes"></div>
           <p class="hint" id="lobbyHeroName"></p>
+          <div class="dbuild" id="lobbyBuild"></div>
         </div>
         <div class="panel chat">
           <h3>Chat</h3>

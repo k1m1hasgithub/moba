@@ -488,7 +488,7 @@ function resolveTarget(G, ref) {
 // Party: one lobby / match over a named room (plus a second room for world data).
 // ---------------------------------------------------------------------------
 const CODE_RE = /^[a-z0-9]{4,8}$/;
-const cleanName = s => String(s || '').replace(/[^\p{L}\p{N} _.'-]/gu, '').trim().slice(0, 16) || 'Player';
+const cleanName = (s, max) => String(s || '').replace(/[^\p{L}\p{N} _.'-]/gu, '').trim().slice(0, max || 16) || 'Player';
 const cleanChat = s => String(s || '').replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁠-⁯﻿]/g, '').trim().slice(0, 120);
 
 class Party {
@@ -513,7 +513,7 @@ class Party {
     this.me = selfId();
     if (!this.me) { this.room.leave(); this.world.leave(); throw new Error('no-connection'); }
     if (this.isHost) {
-      this.L.name = cleanName(lobbyName || this.nick + "'s lobby").slice(0, 24);
+      this.L.name = cleanName(lobbyName || this.nick + "'s lobby", 24);
       this.L.slots[0] = { p: this.me, h: firstHeroFor(0), n: this.nick };
       this.pushLobby();
     } else {
@@ -691,6 +691,14 @@ class Party {
       if (inp.ts > st.t) { st.t = inp.ts; const t = resolveTarget(G, inp.tg | 0); I.target = t ? t.id : 0; }
       if (inp.r > st.r) { st.r = inp.r; I.recall = true; }
       if (inp.ab !== undefined && !!inp.ab !== h.autoBuy) I.autoBuy = !!inp.ab;
+      if (inp.bd !== undefined) {
+        const key = JSON.stringify(inp.bd);
+        if (key !== st.bd) {
+          st.bd = key;
+          const ids = Array.isArray(inp.bd) ? inp.bd.slice(0, 6).map(i => D.ITEMS[i] && D.ITEMS[i].id) : null;
+          h.build = LF.sim.cleanBuild(ids) || h.def.build;
+        }
+      }
       if (Array.isArray(inp.sh)) {
         for (const o of inp.sh) {
           if (!Array.isArray(o) || !(o[0] > st.s)) continue;
