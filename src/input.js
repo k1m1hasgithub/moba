@@ -17,7 +17,6 @@ const S = {
   click: null,
   build: null,              // the player's own build for this match (item ids), null = recommended
   shop: [], netShop: [], shopSeq: 0,
-  pin: null, pinSeq: 0, pinSent: 0, // the one item to buy as soon as it's affordable
 };
 let canvas, ui = {};
 
@@ -349,7 +348,6 @@ function applyLocal(h) {
   if (S.recallDirty) { I.recall = true; S.recallDirty = false; }
   while (S.casts.length) I.casts.push(S.casts.shift());
   while (S.shop.length) I.shop.push(S.shop.shift());
-  if (S.pinSent !== S.pinSeq) { S.pinSent = S.pinSeq; I.pin = S.pin || ''; }
 }
 
 // Build the compact input object a client sends to the host.
@@ -365,7 +363,6 @@ function toNet() {
     r: S.recallSeq,
     c: S.netCasts.slice(),
     sh: S.netShop.slice(),
-    pn: [S.pinSeq, S.pin ? D.ITEM_INDEX[S.pin] : -1],
     bd: S.build ? S.build.map(id => D.ITEM_INDEX[id]) : 0,
   };
 }
@@ -376,11 +373,6 @@ function shop(op, id) {
   S.shop.push({ op, id });
   S.netShop.push([S.shopSeq, op === 'sell' ? 2 : 1, D.ITEM_INDEX[id]]);
   if (S.netShop.length > 6) S.netShop.shift();
-}
-// Pin one item to be bought automatically when affordable (null clears it).
-function setPin(id) {
-  S.pin = id && D.ITEM[id] ? id : null;
-  S.pinSeq++;
 }
 
 // Use this build for the hero we play (the sim hero locally, the mirror hero on a client; a client's
@@ -396,7 +388,7 @@ function enable(on) {
   if (!on) { S.keys.clear(); S.attackKey = S.attackBtn = false; S.aim = null; S.joy = null; S.steer = false; S.casts.length = 0; }
 }
 function reset() {
-  S.moveTo = null; S.target = null; S.casts.length = 0; S.netCasts.length = 0; S.shop.length = 0; S.netShop.length = 0; S.shopSeq = 0; S.pin = null; S.pinSeq++; S.castSeq = 0; S.moveSeq = 0; S.targetSeq = 0; S.recallSeq = 0;
+  S.moveTo = null; S.target = null; S.casts.length = 0; S.netCasts.length = 0; S.shop.length = 0; S.netShop.length = 0; S.shopSeq = 0; S.castSeq = 0; S.moveSeq = 0; S.targetSeq = 0; S.recallSeq = 0;
   S.moveDirty = S.targetDirty = S.recallDirty = false; S.aim = null; S.click = null;
 }
 
@@ -411,5 +403,5 @@ function aimState() {
   return S.aim.x !== undefined ? S.aim : null;
 }
 
-LF.input = { init, applyLocal, toNet, setView, enable, reset, shop, setPin, setBuild, aimState, hoverTarget, get click() { return S.click; }, state: S };
+LF.input = { init, applyLocal, toNet, setView, enable, reset, shop, setBuild, aimState, hoverTarget, get click() { return S.click; }, state: S };
 })(window.LF);

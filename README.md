@@ -66,8 +66,9 @@ gone; from then on only the Tier 2 item counts toward the Tier 1 price. Many com
 Tier 1 item (a Longsword goes into five of them), but each craft consumes its parts, so you buy them again
 for the next item. Unique attributes and passives count once even if you own two copies.
 Each hero has a recommended build. When you can afford its next piece, a buy prompt appears in the
-top-right corner: click **Buy** to confirm (nothing is bought without your click). You can also pin **one**
-item in the shop ("Auto-buy when affordable"); it is bought automatically the moment you have the gold.
+top-right corner: click **Buy** to confirm (nothing is bought without your click). To go for a different item
+first, press **Prioritize** on it in the shop: the prompt then leads you to that item, part by part, until
+you own it, and goes back to your build afterwards. One item can be prioritized at a time.
 
 **Your own builds**: on the hero select screen, in a lobby or from the in-game shop, "Customize build"
 opens the full item list. Pick up to six items in the order you want them (one pair of boots); the build is

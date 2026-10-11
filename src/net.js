@@ -178,7 +178,7 @@ const MT = ['melee', 'caster', 'siege'];
 const MONS = Object.keys(D.MONSTERS);
 const KEYS = ['', 's1', 's2', 'ult', 'sp', 'rg'];
 const TAGS = ['', 'First Blood', 'Double Kill', 'Triple Kill', 'Mega Kill', 'Wipe Out', 'Shutdown', 'Killing Spree', 'Unstoppable', 'Legendary'];
-const EV = ['', 'kill', 'tower', 'monster', 'fx', 'level', 'gold', 'cast', 'recalled', 'respawn', 'buy', 'ace', 'gameover', 'spawn', 'recall', 'heal', 'sell', 'pinbuy'];
+const EV = ['', 'kill', 'tower', 'monster', 'fx', 'level', 'gold', 'cast', 'recalled', 'respawn', 'buy', 'ace', 'gameover', 'spawn', 'recall', 'heal', 'sell'];
 const EV_I = Object.fromEntries(EV.map((v, i) => [v, i]));
 
 // Positions travel as 10-bit numbers in steps of Q world units (covers up to 5115).
@@ -265,7 +265,7 @@ function encodeEvent(e) {
     case 'gold': return [e.seq, i, e.seat, q(e.amt), q(e.x), q(e.y)];
     case 'cast': return [e.seq, i, e.seat, KEYS.indexOf(e.key)];
     case 'recalled': case 'respawn': case 'recall': return [e.seq, i, e.seat];
-    case 'buy': case 'sell': case 'pinbuy': return [e.seq, i, e.seat, D.ITEM_INDEX[e.item]];
+    case 'buy': case 'sell': return [e.seq, i, e.seat, D.ITEM_INDEX[e.item]];
     case 'ace': return [e.seq, i, e.team];
     case 'gameover': return [e.seq, i, e.winner];
     case 'spawn': return [e.seq, i, MONS.indexOf(e.mtype)];
@@ -284,7 +284,7 @@ function decodeEvent(a) {
     case 'gold': return { seq, type, seat: a[2], amt: a[3], x: a[4], y: a[5] };
     case 'cast': return { seq, type, seat: a[2], key: KEYS[a[3]] };
     case 'recalled': case 'respawn': case 'recall': return { seq, type, seat: a[2] };
-    case 'buy': case 'sell': case 'pinbuy': return { seq, type, seat: a[2], item: D.ITEMS[a[3]].id };
+    case 'buy': case 'sell': return { seq, type, seat: a[2], item: D.ITEMS[a[3]].id };
     case 'ace': return { seq, type, team: a[2] };
     case 'gameover': return { seq, type, winner: a[2] };
     case 'spawn': return { seq, type, mtype: MONS[a[2]] };
@@ -712,7 +712,6 @@ class Party {
       if (Array.isArray(inp.mt) && inp.ms > st.m) { st.m = inp.ms; I.moveTo = { x: clamp(+inp.mt[0] || 0, 0, D.W), y: clamp(+inp.mt[1] || 0, 0, D.H) }; }
       if (inp.ts > st.t) { st.t = inp.ts; const t = resolveTarget(G, inp.tg | 0); I.target = t ? t.id : 0; }
       if (inp.r > st.r) { st.r = inp.r; I.recall = true; }
-      if (Array.isArray(inp.pn) && inp.pn[0] > (st.pn || 0)) { st.pn = inp.pn[0]; I.pin = D.ITEMS[inp.pn[1]] ? D.ITEMS[inp.pn[1]].id : ''; }
       if (inp.bd !== undefined) {
         const key = JSON.stringify(inp.bd);
         if (key !== st.bd) {

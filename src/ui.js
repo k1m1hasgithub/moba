@@ -479,6 +479,7 @@ function setupHud(view) {
   $('heroPanel').hidden = !h;
   $('actions').hidden = !h;
   resetStatus();
+  shopSt.prio = null; bp.dismissed = '';
 }
 
 function updateHud(view) {
@@ -501,9 +502,9 @@ function updateHud(view) {
       hud.cache.set('items', itemsKey);
       $('items').innerHTML = Array.from({ length: 6 }, (_, i) => h.items[i] ? `<div class="slot" title="${esc(D.ITEM[h.items[i]].name)}: ${esc(D.ITEM[h.items[i]].text)}"><img src="${itemIcon(h.items[i])}" alt=""></div>` : '<div class="slot"></div>').join('');
     }
-    const next = LF.sim.nextRecommended(h);
+    const next = goal(h);
     const ni = $('nextItem');
-    const np = next && LF.sim.nextPurchase(h);
+    const np = next && LF.sim.nextPurchase(h, next);
     if (np) {
       const it = D.ITEM[np.id], c = LF.sim.purchasePlan(h.items, np.id).cost;
       const key = 'buy' + np.id + c;
@@ -591,8 +592,8 @@ function consumeEvents(view) {
     } else if (e.type === 'ace') {
       const ally = me ? e.team === me.team : e.team === 0;
       hud.bannerQ.push({ title: ally ? 'Ace!' : 'Team wiped', cls: ally ? 'good' : 'bad' });
-    } else if ((e.type === 'buy' || e.type === 'sell' || e.type === 'pinbuy') && me && e.seat === me.seat) {
-      if (e.type === 'pinbuy' && LF.input.state.pin === e.item) LF.input.state.pin = null;
+    } else if ((e.type === 'buy' || e.type === 'sell') && me && e.seat === me.seat) {
+      if (e.type === 'buy' && e.item === shopSt.prio) { shopSt.prio = null; bp.dismissed = ''; }
       toast(e.item, e.type);
     }
   }
@@ -641,7 +642,7 @@ function toast(itemId, type) {
   const el = $('toast');
   el.innerHTML = type === 'sell'
     ? `<img src="${itemIcon(itemId)}" alt=""><span>Sold <b>${esc(it.name)}</b> for ${Math.round(it.cost * LF.sim.SELL_RATE)}</span>`
-    : `<img src="${itemIcon(itemId)}" alt=""><span>${type === 'pinbuy' ? 'Auto-bought' : it.tier === 3 ? 'Bought' : 'Crafted'} <b>${esc(it.name)}</b></span>`;
+    : `<img src="${itemIcon(itemId)}" alt=""><span>${it.tier === 3 ? 'Bought' : 'Crafted'} <b>${esc(it.name)}</b></span>`;
   el.hidden = false;
   hud.toastT = performance.now() + 2200;
   LF.audio.play('gold', 0.5);
@@ -812,7 +813,9 @@ const builds = {
 // ---------------------------------------------------------------------------
 // Shop
 // ---------------------------------------------------------------------------
-const shopSt = { cat: 'All', tier: 'all', sel: null, sig: '', busy: 0 };
+const shopSt = { cat: 'All', tier: 'all', sel: null, sig: '', busy: 0, prio: null };
+// What the player is working toward: the prioritized item, else the next item of their build.
+function goal(h) { return shopSt.prio || LF.sim.nextRecommended(h); }
 const WHY_BUY = { full: 'Your six item slots are full. Sell something first.', boots: 'You can only carry one pair of boots.', gold: '' };
 function shopHero() { const v = LF.main.view(); return v && v.player; }
 function initShop() {
@@ -826,7 +829,7 @@ function initShop() {
     if (b && !b.disabled) { order(b.dataset.op, b.dataset.item); return; }
     pick(e);
   });
-  $('buyNext').addEventListener('click', () => { const h = shopHero(); const n = h && LF.sim.nextPurchase(h); if (n) order('buy', n.id); });
+  $('buyNext').addEventListener('click', () => { const h = shopHero(); const n = h && goal(h) && LF.sim.nextPurchase(h, goal(h)); if (n) order('buy', n.id); });
   $('editBuild').addEventListener('click', () => { const h = shopHero(); if (h) { click(); openBuild(h.def.id); } });
   $('shopClose').addEventListener('click', () => toggleShop(false));
   $('btnShop').addEventListener('click', () => toggleShop());
@@ -839,7 +842,7 @@ function initShop() {
   initBuyPrompt();
 }
 function order(op, id) {
-  if (op === 'pin') { click(); LF.input.setPin(LF.input.state.pin === id ? null : id); renderShop(true); return; }
+  if (op === 'prio') { click(); shopSt.prio = shopSt.prio === id ? null : id; bp.dismissed = ''; renderShop(true); return; }
   if (performance.now() < shopSt.busy) return;
   shopSt.busy = performance.now() + 350;
   LF.input.shop(op, id);
@@ -861,7 +864,7 @@ function renderShop(force) {
   const build = h.build || h.def.build;
   const custom = !!LF.input.state.build;
   if (!shopSt.sel || !D.ITEM[shopSt.sel]) shopSt.sel = next || D.ITEMS[0].id;
-  const sig = [Math.floor(h.gold), h.items.join(), build.join(), shopSt.cat, shopSt.tier, shopSt.sel, LF.input.state.pin].join('|');
+  const sig = [Math.floor(h.gold), h.items.join(), build.join(), shopSt.cat, shopSt.tier, shopSt.sel, shopSt.prio].join('|');
   if (!force && sig === shopSt.sig) return;
   shopSt.sig = sig;
   $('shopGold').textContent = Math.floor(h.gold);
@@ -875,15 +878,16 @@ function renderShop(force) {
     return (owned ? ' owned' : '') + (id === next ? ' next' : '');
   });
   const bn = $('buyNext');
-  const np = LF.sim.nextPurchase(h);
+  const target = goal(h);
+  const np = target && LF.sim.nextPurchase(h, target);
   if (np) {
     const it = D.ITEM[np.id], c = LF.sim.purchasePlan(h.items, np.id).cost;
     bn.disabled = false;
     bn.textContent = np.id === np.target ? `Buy ${it.name} · ${c}` : `Buy ${it.name} · ${c} (for ${D.ITEM[np.target].name})`;
-  } else if (next) {
+  } else if (target) {
     bn.disabled = true;
-    const why = LF.sim.canBuy(h, next);
-    bn.textContent = why === 'gold' ? `Saving for ${D.ITEM[next].name}` : why === 'full' ? 'Slots full' : `Next: ${D.ITEM[next].name}`;
+    const why = LF.sim.canBuy(h, target);
+    bn.textContent = why === 'gold' ? `Saving for ${D.ITEM[target].name}` : why === 'full' ? 'Slots full' : `Next: ${D.ITEM[target].name}`;
   } else { bn.disabled = true; bn.textContent = h.items.length >= 6 ? 'Slots full' : 'Build complete'; }
   syncFilters($('shopTiers'), $('shopTabs'), shopSt);
   $('shopItems').innerHTML = catalogHtml(shopSt, h, id => h.items.filter(i => i === id).length);
@@ -894,13 +898,13 @@ function renderShop(force) {
   const plan = LF.sim.purchasePlan(h.items, it.id);
   const owned = h.items.includes(it.id);
   const short = why === 'gold' ? `Need ${plan.cost - Math.floor(h.gold)} more gold.` : WHY_BUY[why] || '';
-  const pin = LF.input.state.pin;
+  const prio = shopSt.prio;
   $('shopDetail').innerHTML = itemInfoHtml(it, h.items, shopSt.sel) + `
     ${build.includes(it.id) ? `<p class="sd-rec">Part of ${custom ? 'your' : esc(h.def.name) + '\'s recommended'} build.</p>` : ''}
     <div class="sd-actions"><button class="btn primary" type="button" data-op="buy" data-item="${it.id}" ${why ? 'disabled' : ''}>${it.tier === 3 ? 'Buy' : 'Craft'} · ${plan.cost}</button>
     ${plan.used.length ? `<span class="sd-save">Your ${plan.used.map(u => esc(D.ITEM[u].name)).join(', ')} take ${plan.credit} off (full price ${it.cost})</span>` : ''}
     ${owned ? `<button class="btn" type="button" data-op="sell" data-item="${it.id}">Sell · ${Math.round(it.cost * LF.sim.SELL_RATE)}</button>` : ''}
-    ${why === 'gold' || pin === it.id ? `<button class="btn${pin === it.id ? ' pinned' : ''}" type="button" data-op="pin" data-item="${it.id}" title="Buy this item automatically as soon as you have enough gold. Only one item at a time.">${pin === it.id ? '✓ Auto-buying · cancel' : 'Auto-buy when affordable'}</button>` : ''}
+    <button class="btn${prio === it.id ? ' prio' : ''}" type="button" data-op="prio" data-item="${it.id}" title="The buy prompt in the top-right corner leads you to this item, part by part, until you own it. One item at a time.">${prio === it.id ? '★ Prioritized · cancel' : '☆ Prioritize'}</button>
     ${short ? `<span class="sd-why">${esc(short)}</span>` : ''}</div>`;
   if (fresh) $('shopDetail').scrollTop = 0;
   $('shopBag').innerHTML = Array.from({ length: 6 }, (_, i) => {
@@ -910,40 +914,41 @@ function renderShop(force) {
 }
 
 // ---------------------------------------------------------------------------
-// Buy prompt (top right): the next affordable piece of your build waits for a click to confirm.
-// Below it, the one item you pinned to auto-buy, if any.
+// Buy prompt (top right): the next affordable piece toward your goal waits for a click to confirm.
+// The goal is your build's next item, or the one item you prioritized (shown in a row below).
 // ---------------------------------------------------------------------------
-const bp = { card: '', pin: '', dismissed: '' };
+const bp = { card: '', prio: '', dismissed: '' };
 function initBuyPrompt() {
   $('buyPrompt').addEventListener('click', e => {
     const b = e.target.closest('[data-bp]');
     if (!b) return;
     if (b.dataset.bp === 'buy') order('buy', b.dataset.item);
     else if (b.dataset.bp === 'later') { click(); bp.dismissed = b.dataset.item; }
-    else if (b.dataset.bp === 'unpin') { click(); LF.input.setPin(null); renderShop(true); }
+    else if (b.dataset.bp === 'unprio') { click(); shopSt.prio = null; bp.dismissed = ''; renderShop(true); }
   });
 }
 function updateBuyPrompt(h) {
-  let card = '', pinRow = '';
+  let card = '', prioRow = '';
   if (h && !h.dead) {
-    const np = LF.sim.nextPurchase(h);
+    const target = goal(h);
+    const np = target && LF.sim.nextPurchase(h, target);
     if (np && np.id !== bp.dismissed) {
       const it = D.ITEM[np.id], c = LF.sim.purchasePlan(h.items, np.id).cost;
-      card = `<div class="bp-card"><img src="${itemIcon(np.id)}" alt=""><div><small>${np.id === np.target ? 'Ready to buy' : 'For ' + esc(D.ITEM[np.target].name)}</small><strong>${esc(it.name)}</strong></div>
+      card = `<div class="bp-card${shopSt.prio ? ' prio' : ''}"><img src="${itemIcon(np.id)}" alt=""><div><small>${np.id === np.target ? 'Ready to buy' : 'For ' + esc(D.ITEM[np.target].name)}</small><strong>${esc(it.name)}</strong></div>
         <button class="btn primary small" type="button" data-bp="buy" data-item="${np.id}">Buy · ${c}</button><button class="bp-x" type="button" data-bp="later" data-item="${np.id}" aria-label="Not now">×</button></div>`;
     }
     if (!np) bp.dismissed = '';
-    const pin = LF.input.state.pin;
-    if (pin) {
-      const it = D.ITEM[pin], why = LF.sim.canBuy(h, pin), c = LF.sim.purchasePlan(h.items, pin).cost;
-      const note = why === 'gold' ? `${Math.max(0, c - Math.floor(h.gold))} more gold` : why === 'full' ? 'Slots full' : why === 'boots' ? 'Already has boots' : 'Buying…';
-      pinRow = `<div class="bp-pin"><img src="${itemIcon(pin)}" alt=""><span>Auto-buy <b>${esc(it.name)}</b> · ${note}</span><button class="bp-x" type="button" data-bp="unpin" aria-label="Cancel auto-buy">×</button></div>`;
+    const prio = shopSt.prio;
+    if (prio) {
+      const it = D.ITEM[prio], why = LF.sim.canBuy(h, prio), c = LF.sim.purchasePlan(h.items, prio).cost;
+      const note = why === 'full' ? 'slots full' : why === 'boots' ? 'you already have boots' : `${c} gold to finish`;
+      prioRow = `<div class="bp-prio"><img src="${itemIcon(prio)}" alt=""><span>★ Priority: <b>${esc(it.name)}</b> · ${note}</span><button class="bp-x" type="button" data-bp="unprio" aria-label="Stop prioritizing">×</button></div>`;
     }
   }
   const el = $('buyPrompt');
-  if (!el.firstChild) el.innerHTML = '<div id="bpCard"></div><div id="bpPin"></div>';
+  if (!el.firstChild) el.innerHTML = '<div id="bpCard"></div><div id="bpPrio"></div>';
   if (card !== bp.card) { bp.card = card; $('bpCard').innerHTML = card; }
-  if (pinRow !== bp.pin) { bp.pin = pinRow; $('bpPin').innerHTML = pinRow; }
+  if (prioRow !== bp.prio) { bp.prio = prioRow; $('bpPrio').innerHTML = prioRow; }
 }
 
 // ---------------------------------------------------------------------------
