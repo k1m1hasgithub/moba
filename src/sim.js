@@ -98,12 +98,18 @@ function recalc(h, reset) {
     hp: s.hp + s.hpL * L, mana: s.mana + s.manaL * L, ad: s.ad + s.adL * L, armor: s.armor + s.armorL * L,
     as: s.as + s.asL * L, asBonus: 0, ms: s.ms, ap: 0, cdr: 0, ls: h.def.passive.id === 'bloodlust' ? 0.15 : 0,
     regen: s.regen + L * 0.6, manaRegen: 6 + L * 0.5, monster: 0, healing: h.def.passive.id === 'verdant' ? 0.2 : 0,
+    crit: 0, armorPen: 0, magicPen: 0, spellVamp: 0, tenacity: 0,
   };
+  // Normal attributes stack; unique attributes and passives count once per item.
+  const once = new Set();
+  h.ip = {};
   for (const id of h.items) {
     const it = D.ITEM[id];
-    b.hp += it.hp || 0; b.mana += it.mana || 0; b.ad += it.ad || 0; b.armor += it.armor || 0;
-    b.asBonus += it.as || 0; b.ms += it.ms || 0; b.ap += it.ap || 0; b.cdr += it.cdr || 0; b.ls += it.ls || 0;
-    b.regen += it.regen || 0; b.monster += it.monster || 0; b.healing += it.healing || 0;
+    for (const k in it.stats) b[k === 'as' ? 'asBonus' : k] += it.stats[k];
+    if (once.has(id)) continue;
+    once.add(id);
+    for (const k in it.unique) b[k] += it.unique[k];
+    if (it.passive) h.ip[it.passive.id] = true;
   }
   if (reset) { h.hp = b.hp; h.mana = b.mana; }
   else { h.hp += Math.max(0, b.hp - h.maxHp); h.mana += Math.max(0, b.mana - h.maxMana); }
@@ -130,6 +136,7 @@ function applyBuffs(h) {
   h.ls = ls;
   h.cdr = Math.min(0.4, cdr);
   h.armor = b.armor; h.ap = b.ap; h.monster = b.monster; h.healing = b.healing;
+  h.crit = Math.min(0.8, b.crit); h.armorPen = b.armorPen; h.magicPen = b.magicPen; h.spellVamp = b.spellVamp; h.tenacity = Math.min(0.6, b.tenacity);
   h.regen = b.regen; h.manaRegen = b.manaRegen + mregen;
   h.range = h.def.stats.range;
   const slow = h.slowT > 0 ? h.slowP : 0;
@@ -251,6 +258,8 @@ function giveShield(u, amt, dur) {
   u.shield = Math.max(u.shield, amt);
   u.shieldT = Math.max(u.shieldT, dur);
 }
+// Oracle Charm: allies you heal or shield get a burst of speed.
+function bless(h, a) { if (h.ip.blessing && !a.dead) addBuff(a, { ms: 0.2, dur: 2 }, 'blessing'); }
 
 function damage(src, tgt, raw, o) {
   o = o || {};
@@ -262,16 +271,25 @@ function damage(src, tgt, raw, o) {
       amt *= 1 + (src.monster || 0) + (p === 'ambush' || p === 'feral' ? 0.4 : 0);
     }
     if (G.teamBuff[src.team] > G.t) amt *= 1.15;
+    if (src.ip.despair && tgt.kind === 'hero' && tgt.hp < tgt.maxHp * 0.5) amt *= 1.2;
     src.lastDealt = G.t;
     src.revealT = G.t;
   }
   if (src && src.kind === 'minion' && isStructure(tgt)) amt *= src.siege || 1;
   if (tgt.kind === 'hero' && tgt.def.passive.id === 'granite') amt *= 0.85;
   if (isStructure(tgt) && G.t < 180) amt *= 0.6;
-  if (!o.trueDmg) amt *= 100 / (100 + Math.max(0, tgt.armor || 0));
+  if (!o.trueDmg) {
+    const pen = src && src.kind === 'hero' ? (o.attack ? src.armorPen : o.skill ? src.magicPen : 0) : 0;
+    amt *= 100 / (100 + Math.max(0, (tgt.armor || 0) * (1 - pen)));
+  }
   if (tgt.shield > 0) { const a = Math.min(tgt.shield, amt); tgt.shield -= a; amt -= a; }
   tgt.hp -= amt;
   tgt.hitT = G.t;
+  if (tgt.kind === 'hero' && tgt.ip.fortify && tgt.hp > 0 && tgt.hp < tgt.maxHp * 0.4 && !(tgt.fortifyT > G.t)) {
+    tgt.fortifyT = G.t + 30;
+    giveShield(tgt, tgt.maxHp * 0.25, 4);
+    ev('fx', { vis: 'fortify', x: tgt.x, y: tgt.y, team: tgt.team });
+  }
   if (src && src.kind === 'hero') {
     tgt.lastHero = src; tgt.lastHeroT = G.t;
     if (tgt.kind === 'hero') {
@@ -280,6 +298,11 @@ function damage(src, tgt, raw, o) {
       callForHelp(tgt, src);
     }
     if (src.ls > 0 && (o.attack || o.skill) && !src.dead) heal(src, amt * src.ls);
+    if (src.spellVamp > 0 && o.skill && !src.dead) heal(src, amt * src.spellVamp);
+    if (o.attack && tgt.kind === 'hero' && !src.dead) {
+      if (tgt.ip.thorns && !tgt.dead && tgt.hp > 0) damage(tgt, src, raw * 0.15, { trueDmg: true });
+      if (tgt.ip.frostbite) applyCC(src, { slow: 0.2, dur: 1 });
+    }
   }
   if (tgt.kind === 'hero') { tgt.recall = null; if (src) tgt.lastCombat = G.t; }
   if (tgt.kind === 'monster' && !tgt.resetting && src && (src.kind === 'hero' || src.kind === 'minion')) {
@@ -303,6 +326,10 @@ function callForHelp(victim, attacker) {
 function applyCC(u, cc) {
   if (!cc || u.dead || isStructure(u)) return;
   if (u.boss) { if (cc.slow) { u.slowP = Math.max(u.slowP, cc.slow * 0.5); u.slowT = Math.max(u.slowT, cc.dur || 1); } return; }
+  if (u.tenacity > 0) {
+    const k = 1 - u.tenacity;
+    cc = { stun: cc.stun && cc.stun * k, root: cc.root && cc.root * k, slow: cc.slow, dur: (cc.dur || 1) * k };
+  }
   if (cc.stun) {
     u.stunT = Math.max(u.stunT, cc.stun);
     if (u.kind === 'hero') { u.recall = null; u.dash = null; }
@@ -356,6 +383,7 @@ function kill(u, killer) {
         gainGold(credit, def.gold); gainXp(credit, def.xp);
         ev('gold', { seat: credit.seat, amt: def.gold, x: u.x, y: u.y });
       }
+      if (credit.ip.hunt && !credit.dead) { heal(credit, credit.maxHp * 0.12); credit.mana = Math.min(credit.maxMana, credit.mana + credit.maxMana * 0.12); }
       if (def.buff === 'azure') addBuff(credit, { cdr: 0.2, mregen: 12, dur: 70 }, 'azure');
       if (def.buff === 'ember') addBuff(credit, { dur: 70 }, 'ember');
       ev('monster', { mtype: u.mtype, team: credit.team, seat: credit.seat, boss: !!def.boss });
@@ -427,12 +455,25 @@ function heroAttack(h, t) {
   if (p === 'ambush' && G.t - h.lastDealt > 4) { mult += 0.8; fx.big = true; }
   if (h.riposte) { mult += 0.6; fx.heal = 40 + 6 * h.level; h.riposte = false; fx.big = true; }
   if (h.empower) { mult += h.empower; h.empower = 0; fx.big = true; }
+  if (h.crit > 0 && Math.random() < h.crit) { mult *= 1.75; fx.big = true; fx.crit = true; }
+  if (h.ip.gale) { h.galeN = ((h.galeN || 0) + 1) % 3; if (!h.galeN) fx.gale = true; }
   const dmg = h.ad * mult;
   if (h.def.attack.melee) attackHit(h, t, dmg, fx);
   else G.projs.push({ id: G.nextId++, kind: 'auto', x: h.x + Math.cos(h.facing) * 24, y: h.y + Math.sin(h.facing) * 24 - 30, tgt: t, src: h, dmg, fx, speed: h.def.attack.speed, vis: h.def.attack.proj, big: !!fx.big, team: h.team });
 }
 function attackHit(h, t, dmg, fx) {
+  if (h.ip.ruin && !isStructure(t)) dmg += Math.min(t.kind === 'monster' ? 80 : Infinity, t.hp * 0.05);
+  const x = t.x, y = t.y;
   const dealt = damage(h, t, dmg, { attack: true });
+  if (fx.crit) ev('fx', { vis: 'crit', x, y, team: h.team });
+  if (fx.gale) {
+    // Tempest Bow: lightning jumps to two more enemies near the target.
+    const near = enemyUnitsNear(h, x, y, 350).filter(u => u !== t && !isStructure(u) && seen(h.team, u)).sort((a, b) => dist(a, t) - dist(b, t)).slice(0, 2);
+    for (const u of near) {
+      ev('fx', { vis: 'zap', x, y, x2: u.x, y2: u.y, team: h.team });
+      damage(h, u, 60 + 0.3 * h.ad, {});
+    }
+  }
   if (t.dead) return;
   if (fx.slow) applyCC(t, { slow: 0.25, dur: 1 });
   if (fx.heal) heal(h, fx.heal);
@@ -473,7 +514,10 @@ function skillHit(h, tgt, sk, mult) {
   if (sk.dmg) {
     let v = skillValue(h, sk.dmg, tgt) * (mult || 1);
     if (h.def.passive.id === 'radiance' && tgt.hp < tgt.maxHp * 0.5) v *= 1.15;
+    if (h.ip.void) v *= 1.1;
+    if (h.ip.echo && !(h.echoT > G.t)) { h.echoT = G.t + 8; v += 80 + 0.3 * h.ap; ev('fx', { vis: 'echo', x: tgt.x, y: tgt.y, team: h.team }); }
     damage(h, tgt, v, { skill: true });
+    if (h.ip.rampage && tgt.kind === 'hero' && !(h.rampT > G.t)) { h.rampT = G.t + 0.5; heal(h, h.maxHp * 0.03); }
   }
   if (tgt.dead) return;
   if (sk.cc) applyCC(tgt, sk.cc);
@@ -540,6 +584,7 @@ function cast(h, key, ax, ay) {
             if (got > 1) ev('heal', { seat: a.seat, amt: Math.round(got) });
           }
           if (sk.allyShield) giveShield(a, skillValue(h, sk.allyShield), sk.allyShield.dur);
+          if (a !== h) bless(h, a);
         }
       }
       ev('fx', { vis: sk.vis, x: h.x, y: h.y, r: sk.radius, team: h.team });
@@ -574,6 +619,11 @@ function cast(h, key, ax, ay) {
   h.facing = ang;
   h.recall = null;
   if (h.def.passive.id === 'riposte') h.riposte = true;
+  if (h.ip.fury) {
+    h.furyN = hasBuff(h, 'fury') ? Math.min(3, h.furyN + 1) : 1;
+    addBuff(h, { ad: 0.1 * h.furyN, dur: 4 }, 'fury');
+    applyBuffs(h);
+  }
   ev('cast', { seat: h.seat, key });
   return '';
 }
@@ -643,6 +693,7 @@ function updateZones(dt) {
             if (a.dead || a.team !== z.team || dist(a, z) > z.r + a.r) continue;
             const got = heal(a, skillValue(h, sk.heal) * healPower(h));
             if (got > 1) ev('heal', { seat: a.seat, amt: Math.round(got) });
+            if (a !== h) bless(h, a);
           }
         }
       }
@@ -955,21 +1006,45 @@ function controlBot(h, dt) {
 }
 
 // ---------------------------------------------------------------------------
-// Shop. Items can be bought anywhere; selling refunds 60%. Only one pair of boots.
+// Shop. Items can be bought anywhere; selling refunds 60% of the full price. Buying a crafted item uses
+// up the components you own (recursively) and charges the crafting fee plus the missing parts.
+// Only one pair of boots.
 // ---------------------------------------------------------------------------
 const SELL_RATE = 0.6;
+function purchasePlan(items, id) {
+  const pool = items.slice(), used = [], missing = [];
+  let cost = 0;
+  const need = (iid, top) => {
+    if (!top) {
+      const k = pool.indexOf(iid);
+      if (k >= 0) { pool.splice(k, 1); used.push(iid); return; }
+      missing.push(iid);
+    }
+    const it = D.ITEM[iid];
+    cost += it.price;
+    for (const c of it.from || []) need(c, false);
+  };
+  need(id, true);
+  return { cost, used, missing, left: pool };
+}
 function canBuy(h, id) {
   const it = D.ITEM[id];
   if (!it) return 'unknown';
-  if (h.items.length >= 6) return 'full';
-  if (it.icon === 'boots' && h.items.some(i => D.ITEM[i].icon === 'boots')) return 'boots';
-  if (h.gold < it.cost) return 'gold';
+  const p = purchasePlan(h.items, id);
+  if (p.left.length >= 6) return 'full';
+  if (it.boots && p.left.some(i => D.ITEM[i].boots)) return 'boots';
+  if (h.gold < p.cost) return 'gold';
   return '';
 }
 function buyItem(h, id) {
   if (canBuy(h, id)) return false;
-  h.gold -= D.ITEM[id].cost;
-  h.items.push(id);
+  const p = purchasePlan(h.items, id);
+  h.gold -= p.cost;
+  // The new item takes the slot of the first component it used up.
+  let slot = -1;
+  for (const u of p.used) { const k = h.items.indexOf(u); if (slot < 0 || k < slot) slot = k; h.items[k] = null; }
+  if (slot >= 0) h.items[slot] = id; else h.items.push(id);
+  h.items = h.items.filter(Boolean);
   recalc(h, false);
   ev('buy', { seat: h.seat, item: id });
   return true;
@@ -983,16 +1058,31 @@ function sellItem(h, id) {
   ev('sell', { seat: h.seat, item: id });
   return true;
 }
-// Next item of the hero's recommended build that it doesn't own yet.
+// Next finished item of the hero's recommended build that it doesn't own yet.
 function nextRecommended(h) {
   const left = h.items.slice();
   for (const id of h.def.build) {
     const k = left.indexOf(id);
     if (k >= 0) { left.splice(k, 1); continue; }
-    if (D.ITEM[id].icon === 'boots' && h.items.some(i => D.ITEM[i].icon === 'boots')) continue;
+    if (D.ITEM[id].boots && h.items.some(i => D.ITEM[i].boots && D.ITEM[i].tier === 2)) continue;
     return id;
   }
   return null;
+}
+// What to buy right now toward `target`: the item itself if affordable, otherwise its most expensive
+// affordable missing component. Returns { id, target } or null.
+function nextPurchase(h, target) {
+  target = target || nextRecommended(h);
+  if (!target) return null;
+  const why = canBuy(h, target);
+  if (!why) return { id: target, target };
+  if (why !== 'gold') return null;
+  let best = null;
+  for (const c of purchasePlan(h.items, target).missing) {
+    if (canBuy(h, c)) continue;
+    if (!best || D.ITEM[c].cost > D.ITEM[best].cost) best = c;
+  }
+  return best ? { id: best, target } : null;
 }
 function processShop(h) {
   const I = h.input;
@@ -1006,8 +1096,10 @@ function processShop(h) {
 function autoBuy() {
   for (const h of G.heroes) {
     if (!h.autoBuy) continue;
-    const next = nextRecommended(h);
-    if (next) buyItem(h, next);
+    for (let n = 0; n < 4; n++) {
+      const next = nextPurchase(h);
+      if (!next || !buyItem(h, next.id)) break;
+    }
   }
 }
 
@@ -1048,7 +1140,7 @@ function update(dt) {
 }
 
 LF.sim = {
-  createGame, update, cast, startRecall, canBuy, nextRecommended, SELL_RATE, pickAttackTarget, isTargetable, isStructure, validFoe, seen,
+  createGame, update, cast, startRecall, canBuy, purchasePlan, nextRecommended, nextPurchase, SELL_RATE, pickAttackTarget, isTargetable, isStructure, validFoe, seen,
   dist, gap, clamp, rand, moveToward, emptyInput, skillValue, hasBuff, enemyUnitsNear,
   get G() { return G; },
 };

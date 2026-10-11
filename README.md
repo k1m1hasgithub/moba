@@ -37,8 +37,17 @@ Three transports share the same code (`src/net.js`), picked automatically:
 
 The ultimate unlocks at level 4.
 
-**Shop**: press `P` (or the bag button) to buy and sell items anywhere. Each hero has a recommended build;
-the "Next" line on your hero panel buys its next item in one click, or turn on auto-buy in the shop.
+**Shop**: press `P` (or the bag button) to buy and sell items anywhere. Items come in three tiers:
+
+- **Tier 3**: basic pieces (Iron Dagger, Arcane Gem, Vital Ruby, Leather Boots...) with one or two attributes.
+- **Tier 2**: crafted from 1-2 Tier 3 pieces. Some add a unique attribute, like critical chance or lifesteal.
+- **Tier 1**: crafted from 2-3 Tier 2 items. Each has attributes, unique attributes and a unique passive.
+
+Crafting uses up the components you own; you pay the crafting fee plus any missing parts. Many components
+feed more than one Tier 1 item (a Longsword goes into five of them), but each craft consumes its parts, so
+you buy them again for the next item. Unique attributes and passives count once even if you own two copies.
+Each hero has a recommended build; the "Next" line on your hero panel buys the next piece toward it in one
+click, or turn on auto-buy in the shop.
 
 ## Heroes
 

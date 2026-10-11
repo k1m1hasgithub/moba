@@ -145,6 +145,10 @@ function consumeEvents(view) {
         if (e.vis === 'impact') { burst(e.x, e.y, T.light, 10, 260, 0.4); ring(e.x, e.y, 6, 40, T.light, 0.25, 4); }
         else if (e.vis === 'blink') { burst(e.x, e.y - 30, '#c9a2ff', 16, 200); burst(e.x2, e.y2 - 30, '#e8d6ff', 16, 200); ring(e.x2, e.y2, 10, 70, '#c9a2ff', 0.35); }
         else if (e.vis === 'execute') { fx.push({ k: 'slash', x: e.x, y: e.y - 30, t: 0, life: 0.4, color: '#e8fffb', ang: 0.6, len: 110 }); fx.push({ k: 'slash', x: e.x, y: e.y - 30, t: 0, life: 0.4, color: '#7ad1c9', ang: -0.6, len: 110 }); burst(e.x, e.y - 30, '#7ad1c9', 20, 300); shake(6); }
+        else if (e.vis === 'crit') { if (near) { addText(e.x, e.y - 70, 'Crit!', '#ffd25a', 18); burst(e.x, e.y - 30, '#ffd25a', 10, 260, 0.35); } }
+        else if (e.vis === 'zap') { fx.push({ k: 'zap', x: e.x, y: e.y - 30, x2: e.x2, y2: e.y2 - 30, t: 0, life: 0.3, seed: Math.random() * 100 }); burst(e.x2, e.y2 - 30, '#bfe8ff', 10, 220, 0.35); }
+        else if (e.vis === 'echo') { ring(e.x, e.y, 10, 120, '#c9a2ff', 0.45, 5); burst(e.x, e.y - 30, '#e2ccff', 16, 260, 0.45); }
+        else if (e.vis === 'fortify') { ring(e.x, e.y, 30, 90, '#ffe08a', 0.6, 8); for (let i = 0; i < 10; i++) fx.push({ k: 'rise', x: e.x + (Math.random() - 0.5) * 60, y: e.y, t: 0, life: 0.8, color: '#ffe08a' }); }
         else if (e.vis === 'buff') { for (let i = 0; i < 14; i++) fx.push({ k: 'rise', x: e.x + (Math.random() - 0.5) * 50, y: e.y, t: 0, life: 0.7 + Math.random() * 0.4, color: T.light }); }
         else if (e.vis === 'shot' || e.vis === 'claw') {
           fx.push({ k: 'cone', x: e.x, y: e.y, r: e.r, ang: e.ang, angle: e.angle, t: 0, life: 0.3, color: col });
@@ -595,6 +599,15 @@ function drawFx(dt) {
         ctx.rotate(e.ang);
         ctx.beginPath(); ctx.moveTo(-e.len / 2 * Math.min(1, q * 4), 0); ctx.lineTo(e.len / 2 * Math.min(1, q * 4), 0); ctx.stroke();
         ctx.restore();
+        break;
+      }
+      case 'zap': {
+        // A jagged lightning line that flickers out.
+        ctx.globalAlpha = 1 - q; ctx.strokeStyle = q < 0.5 ? '#ffffff' : '#9fdcff'; ctx.lineWidth = 4 * (1 - q) + 1;
+        const n = 6, dx = e.x2 - e.x, dy = e.y2 - e.y, L = Math.hypot(dx, dy) || 1;
+        ctx.beginPath(); ctx.moveTo(e.x, e.y);
+        for (let i = 1; i < n; i++) { const j = Math.sin(e.seed + i * 2.7 + q * 20) * 22; ctx.lineTo(e.x + dx * i / n - dy / L * j, e.y + dy * i / n + dx / L * j); }
+        ctx.lineTo(e.x2, e.y2); ctx.stroke();
         break;
       }
       case 'crack':

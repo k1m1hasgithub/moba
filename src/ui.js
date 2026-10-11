@@ -62,34 +62,65 @@ function skillIcon(heroId, key) {
   iconCache.set(id, url);
   return url;
 }
+const ICON_TINT = {
+  boots: '#6a8bb0', machete: '#7a9a4a', sword: '#b0b8c2', bow: '#9a7a4a', fang: '#b04a4a', axe: '#c27a3a', staff: '#7a6ad0', clock: '#4ab0c2',
+  crown: '#a04ad0', armor: '#7a8a9a', helm: '#c2a24a', charm: '#4ac27a', dagger: '#a8b0b8', feather: '#5ac2c2', gem: '#8a6ae0', shard: '#4a8ae0',
+  ruby: '#d04a5a', chain: '#8a96a2', leaf: '#5ab05a', glove: '#c28a4a', tome: '#6a5ac2', orb: '#5a7ae0', belt: '#b07a4a', greatsword: '#d0d8e0',
+  stormbow: '#4ab0e0', hammer: '#b0905a', flower: '#d04a7a', thorns: '#6a8a5a', frost: '#7ac8f0',
+};
+const ITEM_TINT = { warboots: '#a0705a', magicboots: '#7a6ad0', swiftboots: '#3ab090' };
+const TIER_EDGE = { 1: '#f0c35a', 2: '#c9d2dc', 3: '#b07a4a' };
 function itemIcon(itemId) {
   const id = 'item:' + itemId;
   if (iconCache.has(id)) return iconCache.get(id);
   const it = D.ITEM[itemId];
   const c = document.createElement('canvas'); c.width = c.height = 64;
   const g = c.getContext('2d');
-  const tint = { boots: '#6a8bb0', machete: '#7a9a4a', sword: '#b0b8c2', bow: '#9a7a4a', fang: '#b04a4a', axe: '#c27a3a', staff: '#7a6ad0', clock: '#4ab0c2', crown: '#a04ad0', armor: '#7a8a9a', helm: '#c2a24a', charm: '#4ac27a' }[it.icon] || '#8a8a8a';
+  const tint = ITEM_TINT[it.id] || ICON_TINT[it.icon] || '#8a8a8a';
   const bg = g.createLinearGradient(0, 0, 0, 64);
   bg.addColorStop(0, A.shade(tint, -0.35)); bg.addColorStop(1, A.shade(tint, -0.75));
   g.fillStyle = bg; g.fillRect(0, 0, 64, 64);
-  g.fillStyle = A.shade(tint, 0.45); g.strokeStyle = A.shade(tint, 0.6); g.lineWidth = 5; g.lineCap = 'round'; g.lineJoin = 'round';
+  if (it.tier === 1) A.glow(g, 32, 32, 34, A.shade(tint, 0.3), 0.35);
+  const hi = A.shade(tint, 0.45), dark = A.shade(tint, -0.5);
+  g.fillStyle = hi; g.strokeStyle = A.shade(tint, 0.6); g.lineWidth = 5; g.lineCap = 'round'; g.lineJoin = 'round';
   g.save(); g.translate(32, 32);
+  const blade = (w, len) => { g.beginPath(); g.moveTo(-w, 10); g.lineTo(-w, -len + 8); g.lineTo(0, -len); g.lineTo(w, -len + 8); g.lineTo(w, 10); g.closePath(); g.fill(); };
   switch (it.icon) {
-    case 'boots': g.beginPath(); g.moveTo(-10, -20); g.lineTo(2, -20); g.lineTo(2, 6); g.lineTo(18, 10); g.lineTo(18, 20); g.lineTo(-12, 20); g.closePath(); g.fill(); break;
+    case 'boots': g.beginPath(); g.moveTo(-10, -20); g.lineTo(2, -20); g.lineTo(2, 6); g.lineTo(18, 10); g.lineTo(18, 20); g.lineTo(-12, 20); g.closePath(); g.fill();
+      if (it.tier === 2) { g.fillStyle = dark; g.fillRect(-10, -12, 12, 4); g.fillStyle = '#fff'; g.globalAlpha = 0.6; g.beginPath(); g.moveTo(-20, -6); g.lineTo(-13, -6); g.moveTo(-22, 2); g.lineTo(-13, 2); g.lineWidth = 3; g.strokeStyle = '#fff'; g.stroke(); g.globalAlpha = 1; } break;
     case 'sword': case 'machete': g.rotate(-0.8); g.fillRect(-4, -26, 8, 36); g.fillRect(-12, 8, 24, 5); g.fillStyle = '#5a4030'; g.fillRect(-3, 13, 6, 12); break;
+    case 'dagger': g.rotate(-0.8); blade(4, 18); g.fillRect(-9, 8, 18, 4); g.fillStyle = '#5a4030'; g.fillRect(-2.5, 12, 5, 9); break;
+    case 'greatsword': g.rotate(-0.8); blade(6, 28); g.fillStyle = dark; g.fillRect(-1.5, -18, 3, 26); g.fillStyle = '#f0c35a'; g.fillRect(-14, 8, 28, 6); g.fillStyle = '#5a4030'; g.fillRect(-3, 14, 6, 12); break;
     case 'bow': g.beginPath(); g.arc(-6, 0, 22, -1.3, 1.3); g.stroke(); g.lineWidth = 2; g.beginPath(); g.moveTo(0, -21); g.lineTo(0, 21); g.stroke(); break;
+    case 'stormbow': g.beginPath(); g.arc(-6, 0, 22, -1.3, 1.3); g.stroke(); g.lineWidth = 2; g.beginPath(); g.moveTo(0, -21); g.lineTo(0, 21); g.stroke();
+      A.glow(g, 8, 0, 18, '#bfe8ff', 0.7); g.strokeStyle = '#ffffff'; g.lineWidth = 3; g.beginPath(); g.moveTo(14, -18); g.lineTo(4, -2); g.lineTo(14, 2); g.lineTo(4, 18); g.stroke(); break;
     case 'fang': g.beginPath(); g.moveTo(-14, -20); g.quadraticCurveTo(10, -6, 4, 24); g.quadraticCurveTo(-2, 0, -14, -20); g.fill(); break;
-    case 'axe': g.fillStyle = '#6a4a2c'; g.save(); g.rotate(-0.7); g.fillRect(-3, -24, 6, 48); g.restore(); g.fillStyle = A.shade(tint, 0.45); g.beginPath(); g.arc(4, -10, 16, -1.5, 1.2); g.closePath(); g.fill(); break;
-    case 'staff': g.beginPath(); g.moveTo(-14, 24); g.lineTo(10, -14); g.stroke(); A.glow(g, 12, -16, 16, '#d0c8ff', 0.9); g.fillStyle = '#fff'; A.circle(g, 12, -16, 6); g.fill(); break;
-    case 'clock': g.beginPath(); g.arc(0, 0, 20, 0, TAU); g.stroke(); g.lineWidth = 4; g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -12); g.moveTo(0, 0); g.lineTo(9, 5); g.stroke(); break;
-    case 'crown': g.beginPath(); g.moveTo(-20, 14); g.lineTo(-20, -10); g.lineTo(-10, 2); g.lineTo(0, -16); g.lineTo(10, 2); g.lineTo(20, -10); g.lineTo(20, 14); g.closePath(); g.fill(); break;
-    case 'armor': g.beginPath(); g.moveTo(-20, -18); g.lineTo(20, -18); g.lineTo(16, 18); g.lineTo(0, 24); g.lineTo(-16, 18); g.closePath(); g.fill(); g.strokeStyle = A.shade(tint, -0.4); g.lineWidth = 3; g.beginPath(); g.moveTo(0, -18); g.lineTo(0, 22); g.stroke(); break;
-    case 'helm': g.beginPath(); g.arc(0, 4, 20, Math.PI, TAU); g.lineTo(20, 18); g.lineTo(-20, 18); g.closePath(); g.fill(); g.fillStyle = A.shade(tint, -0.5); g.fillRect(-12, 4, 24, 5); break;
+    case 'axe': g.fillStyle = '#6a4a2c'; g.save(); g.rotate(-0.7); g.fillRect(-3, -24, 6, 48); g.restore(); g.fillStyle = hi; g.beginPath(); g.arc(4, -10, 16, -1.5, 1.2); g.closePath(); g.fill(); break;
+    case 'hammer': g.fillStyle = '#6a4a2c'; g.save(); g.rotate(-0.6); g.fillRect(-3, -14, 6, 40); g.fillStyle = hi; g.fillRect(-16, -26, 32, 16); g.fillStyle = dark; g.fillRect(-16, -20, 32, 3); g.restore(); break;
+    case 'staff': g.beginPath(); g.moveTo(-14, 24); g.lineTo(10, -14); g.stroke(); A.glow(g, 12, -16, 16, '#d0c8ff', 0.9); g.fillStyle = '#fff'; A.star(g, 12, -16, 9, 4, 5); g.fill(); break;
+    case 'clock': g.beginPath(); g.moveTo(-14, -20); g.lineTo(14, -20); g.lineTo(-14, 20); g.lineTo(14, 20); g.closePath(); g.stroke(); g.fillStyle = '#f0e0a0'; g.beginPath(); g.moveTo(-8, 16); g.lineTo(8, 16); g.lineTo(0, 6); g.closePath(); g.fill(); break;
+    case 'crown': g.beginPath(); g.moveTo(-20, 14); g.lineTo(-20, -10); g.lineTo(-10, 2); g.lineTo(0, -16); g.lineTo(10, 2); g.lineTo(20, -10); g.lineTo(20, 14); g.closePath(); g.fill(); A.glow(g, 0, 4, 10, '#e0b0ff', 0.9); break;
+    case 'armor': g.beginPath(); g.moveTo(-20, -18); g.lineTo(20, -18); g.lineTo(16, 18); g.lineTo(0, 24); g.lineTo(-16, 18); g.closePath(); g.fill(); g.strokeStyle = dark; g.lineWidth = 3; g.beginPath(); g.moveTo(0, -18); g.lineTo(0, 22); g.stroke(); break;
+    case 'thorns': g.beginPath(); g.moveTo(-20, -18); g.lineTo(20, -18); g.lineTo(16, 18); g.lineTo(0, 24); g.lineTo(-16, 18); g.closePath(); g.fill();
+      g.fillStyle = A.shade(tint, 0.7); for (const [x, y, r] of [[-22, -6, 3.6], [22, -6, 0.5], [-18, 14, 3.9], [18, 14, 0.2], [0, -20, 4.7]]) { g.save(); g.translate(x, y); g.rotate(r); g.beginPath(); g.moveTo(-4, 0); g.lineTo(0, -10); g.lineTo(4, 0); g.fill(); g.restore(); } break;
+    case 'chain': g.lineWidth = 4; for (const [x, y] of [[-9, -9], [9, -9], [-9, 9], [9, 9]]) { A.circle(g, x, y, 8); g.stroke(); } break;
+    case 'helm': g.beginPath(); g.arc(0, 4, 20, Math.PI, TAU); g.lineTo(20, 18); g.lineTo(-20, 18); g.closePath(); g.fill(); g.fillStyle = dark; g.fillRect(-12, 4, 24, 5); break;
+    case 'belt': g.fillRect(-24, -8, 48, 16); g.fillStyle = '#f0c35a'; g.fillRect(-9, -11, 18, 22); g.fillStyle = dark; g.fillRect(-4, -6, 8, 12); break;
     case 'charm': A.glow(g, 0, 0, 26, '#b6ffc8', 0.8); g.beginPath(); g.moveTo(0, -20); g.lineTo(16, 0); g.lineTo(0, 20); g.lineTo(-16, 0); g.closePath(); g.fill(); break;
+    case 'gem': A.glow(g, 0, 0, 24, '#d8c8ff', 0.6); g.beginPath(); g.moveTo(-16, -6); g.lineTo(-8, -16); g.lineTo(8, -16); g.lineTo(16, -6); g.lineTo(0, 18); g.closePath(); g.fill(); g.fillStyle = '#fff'; g.globalAlpha = 0.5; g.beginPath(); g.moveTo(-8, -16); g.lineTo(0, -6); g.lineTo(8, -16); g.fill(); g.globalAlpha = 1; break;
+    case 'ruby': A.glow(g, 0, 0, 24, '#ffb0b8', 0.5); g.beginPath(); g.moveTo(0, -18); g.lineTo(15, -4); g.lineTo(9, 16); g.lineTo(-9, 16); g.lineTo(-15, -4); g.closePath(); g.fill(); g.fillStyle = '#fff'; g.globalAlpha = 0.45; g.beginPath(); g.moveTo(0, -18); g.lineTo(-6, -2); g.lineTo(-15, -4); g.fill(); g.globalAlpha = 1; break;
+    case 'shard': A.glow(g, 0, 0, 24, '#b8d8ff', 0.6); g.beginPath(); g.moveTo(0, -22); g.lineTo(9, 0); g.lineTo(0, 22); g.lineTo(-9, 0); g.closePath(); g.fill(); break;
+    case 'orb': A.glow(g, 0, 0, 28, '#c8d8ff', 0.8); g.fillStyle = '#fff'; A.circle(g, 0, 0, 13); g.fill(); g.fillStyle = hi; A.circle(g, 0, 0, 9); g.fill(); break;
+    case 'leaf': g.beginPath(); g.moveTo(-14, 16); g.quadraticCurveTo(-16, -14, 16, -18); g.quadraticCurveTo(14, 12, -14, 16); g.fill(); g.strokeStyle = dark; g.lineWidth = 2; g.beginPath(); g.moveTo(-14, 16); g.lineTo(10, -10); g.stroke(); break;
+    case 'feather': g.rotate(0.6); g.beginPath(); g.ellipse(0, -2, 8, 22, 0, 0, TAU); g.fill(); g.strokeStyle = dark; g.lineWidth = 2; g.beginPath(); g.moveTo(0, -22); g.lineTo(0, 26); g.stroke(); break;
+    case 'glove': g.beginPath(); g.moveTo(-12, 22); g.lineTo(-12, -4); g.lineTo(-16, -14); g.lineTo(-10, -16); g.lineTo(-6, -8); g.lineTo(-6, -20); g.lineTo(0, -20); g.lineTo(0, -10); g.lineTo(4, -20); g.lineTo(10, -18); g.lineTo(8, -6); g.lineTo(14, -12); g.lineTo(16, -6); g.lineTo(12, 22); g.closePath(); g.fill(); g.fillStyle = '#e8eef4'; for (const x of [-6, 2, 9]) { g.beginPath(); g.moveTo(x - 2, -18); g.lineTo(x + 1, -27); g.lineTo(x + 3, -18); g.fill(); } break;
+    case 'tome': g.fillRect(-18, -20, 36, 40); g.fillStyle = dark; g.fillRect(-18, -20, 6, 40); A.glow(g, 4, 0, 14, '#e0d8ff', 0.8); g.fillStyle = '#fff'; A.star(g, 4, 0, 8, 3, 5); g.fill(); break;
+    case 'flower': for (let i = 0; i < 5; i++) { g.save(); g.rotate(i / 5 * TAU); g.beginPath(); g.ellipse(0, -12, 8, 13, 0, 0, TAU); g.fill(); g.restore(); } g.fillStyle = '#ffe08a'; A.circle(g, 0, 0, 7); g.fill(); break;
+    case 'frost': g.lineWidth = 4; for (let i = 0; i < 3; i++) { g.save(); g.rotate(i / 3 * Math.PI); g.beginPath(); g.moveTo(0, -22); g.lineTo(0, 22); g.moveTo(-6, -16); g.lineTo(0, -10); g.lineTo(6, -16); g.moveTo(-6, 16); g.lineTo(0, 10); g.lineTo(6, 16); g.stroke(); g.restore(); } break;
     default: g.beginPath(); g.arc(0, 0, 16, 0, TAU); g.fill();
   }
   g.restore();
-  g.strokeStyle = 'rgba(255,255,255,0.25)'; g.lineWidth = 3; g.strokeRect(0, 0, 64, 64);
+  g.strokeStyle = TIER_EDGE[it.tier]; g.globalAlpha = it.tier === 1 ? 0.95 : 0.6; g.lineWidth = it.tier === 1 ? 4 : 3; g.strokeRect(1, 1, 62, 62); g.globalAlpha = 1;
   const url = c.toDataURL();
   iconCache.set(id, url);
   return url;
@@ -418,18 +449,28 @@ function updateHud(view) {
     }
     const next = LF.sim.nextRecommended(h);
     const ni = $('nextItem');
-    if (next && h.items.length < 6) {
-      const it = D.ITEM[next];
-      const ok = h.gold >= it.cost;
-      const key = next + Math.floor(h.gold / 20) + ok;
+    const np = next && LF.sim.nextPurchase(h);
+    if (np) {
+      const it = D.ITEM[np.id], c = LF.sim.purchasePlan(h.items, np.id).cost;
+      const key = 'buy' + np.id + c;
       if (hud.cache.get('next') !== key) {
         hud.cache.set('next', key);
-        ni.classList.toggle('ready', ok);
-        ni.dataset.id = next;
-        ni.innerHTML = ok ? `<span>Buy ${esc(it.name)}</span><i style="--p:100%"><b></b></i><span>${it.cost}</span>`
-          : `<span>Next: ${esc(it.name)}</span><i style="--p:${Math.min(100, h.gold / it.cost * 100).toFixed(0)}%"><b></b></i><span>${it.cost}</span>`;
+        ni.classList.add('ready');
+        ni.dataset.id = np.id;
+        ni.innerHTML = `<span>${it.tier === 3 ? 'Buy' : 'Craft'} ${esc(it.name)}</span><i style="--p:100%"><b></b></i><span>${c}</span>`;
       }
-    } else if (hud.cache.get('next') !== 'done') { hud.cache.set('next', 'done'); ni.classList.remove('ready'); ni.dataset.id = ''; ni.textContent = h.items.length >= 6 ? 'Inventory full' : 'Build complete'; }
+    } else if (next && LF.sim.canBuy(h, next) === 'gold') {
+      // Progress toward the cheapest piece still missing from the next item.
+      const plan = LF.sim.purchasePlan(h.items, next);
+      const step = plan.missing.reduce((m, c) => Math.min(m, LF.sim.purchasePlan(h.items, c).cost), plan.cost);
+      const key = 'save' + next + Math.floor(h.gold / 20);
+      if (hud.cache.get('next') !== key) {
+        hud.cache.set('next', key);
+        ni.classList.remove('ready');
+        ni.dataset.id = '';
+        ni.innerHTML = `<span>Next: ${esc(D.ITEM[next].name)}</span><i style="--p:${Math.min(100, h.gold / step * 100).toFixed(0)}%"><b></b></i><span>${plan.cost}</span>`;
+      }
+    } else if (hud.cache.get('next') !== 'done' + next) { hud.cache.set('next', 'done' + next); ni.classList.remove('ready'); ni.dataset.id = ''; ni.textContent = !next ? 'Build complete' : 'Inventory full'; }
     renderShop();
     for (const key of ['s1', 's2', 'ult']) {
       const el = $('sk-' + key), sk = h.def.skill[key];
@@ -533,7 +574,7 @@ function toast(itemId, type) {
   const el = $('toast');
   el.innerHTML = type === 'sell'
     ? `<img src="${itemIcon(itemId)}" alt=""><span>Sold <b>${esc(it.name)}</b> for ${Math.round(it.cost * LF.sim.SELL_RATE)}</span>`
-    : `<img src="${itemIcon(itemId)}" alt=""><span>Bought <b>${esc(it.name)}</b></span>`;
+    : `<img src="${itemIcon(itemId)}" alt=""><span>${it.tier === 3 ? 'Bought' : 'Crafted'} <b>${esc(it.name)}</b></span>`;
   el.hidden = false;
   hud.toastT = performance.now() + 2200;
   LF.audio.play('gold', 0.5);
@@ -552,21 +593,26 @@ function denyReason(key, why) {
 // Shop
 // ---------------------------------------------------------------------------
 const SHOP_TABS = ['All', 'Attack', 'Magic', 'Defense', 'Movement', 'Jungle'];
-const shopSt = { cat: 'All', sel: null, sig: '', busy: 0 };
+const TIERS = [['all', 'All tiers'], ['1', 'Tier 1'], ['2', 'Tier 2'], ['3', 'Tier 3']];
+const TIER_NOTE = { 1: 'Tier 1 · finished items with a unique passive', 2: 'Tier 2 · crafted from Tier 3', 3: 'Tier 3 · basic pieces' };
+const shopSt = { cat: 'All', tier: 'all', sel: null, sig: '', busy: 0 };
 const WHY_BUY = { full: 'Your six item slots are full. Sell something first.', boots: 'You can only carry one pair of boots.', gold: '' };
 function shopHero() { const v = LF.main.view(); return v && v.player; }
 function initShop() {
   $('shopTabs').innerHTML = SHOP_TABS.map(t => `<button class="role-tab" role="tab" type="button" data-cat="${t}">${t}</button>`).join('');
+  $('shopTiers').innerHTML = TIERS.map(([k, t]) => `<button class="tier-tab" type="button" data-tier="${k}">${k === 'all' ? '' : `<i class="dot t${k}"></i>`}${t}</button>`).join('');
   $('shopTabs').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (b) { shopSt.cat = b.dataset.cat; click(); renderShop(true); } });
+  $('shopTiers').addEventListener('click', e => { const b = e.target.closest('[data-tier]'); if (b) { shopSt.tier = b.dataset.tier; click(); renderShop(true); } });
   const pick = e => { const b = e.target.closest('[data-id]'); if (b && b.dataset.id) { shopSt.sel = b.dataset.id; LF.audio.play('hover', 1); renderShop(true); } };
   $('shopItems').addEventListener('click', pick);
   $('recItems').addEventListener('click', pick);
   $('shopBag').addEventListener('click', pick);
   $('shopDetail').addEventListener('click', e => {
     const b = e.target.closest('[data-op]');
-    if (b && !b.disabled) order(b.dataset.op, b.dataset.item);
+    if (b && !b.disabled) { order(b.dataset.op, b.dataset.item); return; }
+    pick(e);
   });
-  $('buyNext').addEventListener('click', () => { const h = shopHero(); const n = h && LF.sim.nextRecommended(h); if (n) order('buy', n); });
+  $('buyNext').addEventListener('click', () => { const h = shopHero(); const n = h && LF.sim.nextPurchase(h); if (n) order('buy', n.id); });
   $('autoBuy').addEventListener('change', e => { LF.input.setAutoBuy(e.target.checked); renderShop(true); });
   $('shopClose').addEventListener('click', () => toggleShop(false));
   $('btnShop').addEventListener('click', () => toggleShop());
@@ -590,13 +636,28 @@ function toggleShop(force) {
   el.hidden = !open;
   if (open) { shopSt.sel = null; renderShop(true); }
 }
+const tierBadge = t => `<i class="tb t${t}" title="Tier ${t}">T${t}</i>`;
+// Recipe tree: the item on top, its components below. Parts you already own are ticked and not expanded,
+// matching how the shop spends them.
+function recipeTree(h, id) {
+  const pool = h.items.slice();
+  const node = (iid, top) => {
+    const it = D.ITEM[iid];
+    const k = top ? -1 : pool.indexOf(iid);
+    if (k >= 0) pool.splice(k, 1);
+    const own = k >= 0;
+    const kids = !own && it.from ? `<div class="t-kids">${it.from.map(c => node(c, false)).join('')}</div>` : '';
+    return `<div class="t-branch"><button class="t-node${own ? ' own' : ''}${iid === shopSt.sel ? ' sel' : ''}" type="button" data-id="${iid}" title="${esc(it.name)}"><img src="${itemIcon(iid)}" alt="${esc(it.name)}"><small>${own ? 'Owned' : it.cost}</small></button>${kids}</div>`;
+  };
+  return node(id, true);
+}
 function renderShop(force) {
   if ($('shop').hidden) return;
   const h = shopHero();
   if (!h) return;
   const next = LF.sim.nextRecommended(h);
   if (!shopSt.sel || !D.ITEM[shopSt.sel]) shopSt.sel = next || D.ITEMS[0].id;
-  const sig = [Math.floor(h.gold), h.items.join(), shopSt.cat, shopSt.sel, LF.input.state.autoBuy].join('|');
+  const sig = [Math.floor(h.gold), h.items.join(), shopSt.cat, shopSt.tier, shopSt.sel, LF.input.state.autoBuy].join('|');
   if (!force && sig === shopSt.sig) return;
   shopSt.sig = sig;
   $('shopGold').textContent = Math.floor(h.gold);
@@ -611,28 +672,52 @@ function renderShop(force) {
     return `<button class="rec-item${owned ? ' owned' : ''}${id === next ? ' next' : ''}" type="button" data-id="${id}" aria-pressed="${id === shopSt.sel}" title="${esc(it.name)} · ${it.cost}"><img src="${itemIcon(id)}" alt="${esc(it.name)}"></button>`;
   }).join('');
   const bn = $('buyNext');
-  if (next) {
-    const it = D.ITEM[next], why = LF.sim.canBuy(h, next);
-    bn.disabled = !!why;
-    bn.textContent = why === 'gold' ? `Next: ${it.name} (${it.cost - Math.floor(h.gold)} more gold)` : `Buy ${it.name} · ${it.cost}`;
+  const np = LF.sim.nextPurchase(h);
+  if (np) {
+    const it = D.ITEM[np.id], c = LF.sim.purchasePlan(h.items, np.id).cost;
+    bn.disabled = false;
+    bn.textContent = np.id === np.target ? `Buy ${it.name} · ${c}` : `Buy ${it.name} · ${c} (for ${D.ITEM[np.target].name})`;
+  } else if (next) {
+    bn.disabled = true;
+    const why = LF.sim.canBuy(h, next);
+    bn.textContent = why === 'gold' ? `Saving for ${D.ITEM[next].name}` : why === 'full' ? 'Slots full' : `Next: ${D.ITEM[next].name}`;
   } else { bn.disabled = true; bn.textContent = h.items.length >= 6 ? 'Slots full' : 'Build complete'; }
   $('shopTabs').querySelectorAll('[data-cat]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.cat === shopSt.cat)));
-  const list = D.ITEMS.filter(it => shopSt.cat === 'All' || it.cat === shopSt.cat);
-  $('shopItems').innerHTML = list.map(it => {
+  $('shopTiers').querySelectorAll('[data-tier]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tier === shopSt.tier)));
+  const card = it => {
     const n = h.items.filter(i => i === it.id).length;
-    return `<button class="shop-card${h.gold < it.cost ? ' poor' : ''}" type="button" data-id="${it.id}" aria-pressed="${it.id === shopSt.sel}"><img src="${itemIcon(it.id)}" alt=""><span><strong>${esc(it.name)}</strong><small>${it.cost}</small></span>${n ? `<span class="count">×${n}</span>` : ''}</button>`;
-  }).join('');
+    const c = LF.sim.purchasePlan(h.items, it.id).cost;
+    return `<button class="shop-card${h.gold < c ? ' poor' : ''}" type="button" data-id="${it.id}" aria-pressed="${it.id === shopSt.sel}"><img src="${itemIcon(it.id)}" alt="">${tierBadge(it.tier)}<span><strong>${esc(it.name)}</strong><small>${c}${c < it.cost ? `<s>${it.cost}</s>` : ''}</small></span>${n ? `<span class="count">×${n}</span>` : ''}</button>`;
+  };
+  let html = '';
+  for (const t of [1, 2, 3]) {
+    if (shopSt.tier !== 'all' && +shopSt.tier !== t) continue;
+    const list = D.ITEMS.filter(it => it.tier === t && (shopSt.cat === 'All' || it.cat === shopSt.cat));
+    if (list.length) html += `<p class="tier-head">${TIER_NOTE[t]}</p>` + list.map(card).join('');
+  }
+  $('shopItems').innerHTML = html || '<p class="tier-head">Nothing here.</p>';
   const it = D.ITEM[shopSt.sel];
+  const fresh = shopSt.shown !== it.id;
+  shopSt.shown = it.id;
   const why = LF.sim.canBuy(h, it.id);
+  const plan = LF.sim.purchasePlan(h.items, it.id);
   const owned = h.items.includes(it.id);
   const recFor = h.def.build.includes(it.id);
-  const short = why === 'gold' ? `Need ${it.cost - Math.floor(h.gold)} more gold.` : WHY_BUY[why] || '';
-  $('shopDetail').innerHTML = `<div class="sd-top"><img src="${itemIcon(it.id)}" alt=""><div><small>${it.cat} · ${it.cost} gold</small><h3>${esc(it.name)}</h3></div></div>
-    <p class="sd-stats">${esc(it.text)}</p><p class="sd-desc">${esc(it.desc)}</p>
+  const short = why === 'gold' ? `Need ${plan.cost - Math.floor(h.gold)} more gold.` : WHY_BUY[why] || '';
+  const list = (cls, lines) => lines.length ? `<ul class="${cls}">${lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : '';
+  $('shopDetail').innerHTML = `<div class="sd-top"><img src="${itemIcon(it.id)}" alt=""><div><small>${tierBadge(it.tier)} Tier ${it.tier} · ${it.cat}</small><h3>${esc(it.name)}</h3></div></div>
+    <p class="sd-desc">${esc(it.desc)}</p>
+    <div class="sd-attrs-row"><div class="sd-attrs"><span class="sd-label">Attributes</span>${list('sd-stats', it.lines)}</div>
+    ${it.uniqueLines.length ? `<div class="sd-attrs"><span class="sd-label uniq">Unique attributes</span>${list('sd-uniq', it.uniqueLines)}</div>` : ''}</div>
+    ${it.passive ? `<div class="sd-passive"><span class="sd-label">Unique passive · ${esc(it.passive.name)}</span><p>${esc(it.passive.text)}</p></div>` : ''}
+    ${it.from ? `<div class="sd-recipe"><span class="sd-label">Recipe <em>crafting fee ${it.price}</em></span><div class="tree">${recipeTree(h, it.id)}</div></div>` : ''}
+    ${it.into.length ? `<div class="sd-into"><span class="sd-label">Builds into</span><div class="into">${it.into.map(i => `<button class="t-node" type="button" data-id="${i}" title="${esc(D.ITEM[i].name)}"><img src="${itemIcon(i)}" alt="${esc(D.ITEM[i].name)}"></button>`).join('')}</div></div>` : ''}
     ${recFor ? `<p class="sd-rec">Part of ${esc(h.def.name)}'s recommended build.</p>` : ''}
-    <div class="sd-actions"><button class="btn primary" type="button" data-op="buy" data-item="${it.id}" ${why ? 'disabled' : ''}>Buy · ${it.cost}</button>
+    <div class="sd-actions"><button class="btn primary" type="button" data-op="buy" data-item="${it.id}" ${why ? 'disabled' : ''}>${it.tier === 3 ? 'Buy' : 'Craft'} · ${plan.cost}</button>
+    ${plan.used.length ? `<span class="sd-save">Uses ${plan.used.map(u => esc(D.ITEM[u].name)).join(', ')} (full price ${it.cost})</span>` : ''}
     ${owned ? `<button class="btn" type="button" data-op="sell" data-item="${it.id}">Sell · ${Math.round(it.cost * LF.sim.SELL_RATE)}</button>` : ''}
     ${short ? `<span class="sd-why">${esc(short)}</span>` : ''}</div>`;
+  if (fresh) $('shopDetail').scrollTop = 0;
   $('shopBag').innerHTML = Array.from({ length: 6 }, (_, i) => {
     const id = h.items[i];
     return id ? `<button class="bag-slot" type="button" data-id="${id}" aria-pressed="${id === shopSt.sel}" title="${esc(D.ITEM[id].name)}"><img src="${itemIcon(id)}" alt="${esc(D.ITEM[id].name)}"></button>` : '<span class="bag-slot empty"></span>';

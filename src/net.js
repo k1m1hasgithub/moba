@@ -172,7 +172,7 @@ function connect() {
 // ---------------------------------------------------------------------------
 const VIS = ['', 'arrow', 'bigarrow', 'bullet', 'snipe', 'light', 'bolt', 'hex', 'hexorb', 'petal', 'snare', 'spear', 'tower', 'cannon', 'minion',
   'cleave', 'slam', 'pounce', 'knives', 'roar', 'bloom', 'shot', 'claw', 'field', 'star', 'quake', 'buff', 'blink', 'execute', 'impact',
-  'rain', 'whirl', 'rift', 'sanctuary'];
+  'rain', 'whirl', 'rift', 'sanctuary', 'crit', 'zap', 'echo', 'fortify'];
 const VIS_I = Object.fromEntries(VIS.map((v, i) => [v, i]));
 const MT = ['melee', 'caster', 'siege'];
 const MONS = Object.keys(D.MONSTERS);
@@ -238,8 +238,9 @@ function unpackProj(n) {
   const x = (n % 1024) * Q + 2; n = Math.floor(n / 1024);
   return { id: n, x, y, vis, ang, team, big: !!big };
 }
-function packItems(items) { let n = 0; for (let i = 0; i < 6; i++) n = n * 16 + (items[i] ? D.ITEM_INDEX[items[i]] + 1 : 0); return n; }
-function unpackItems(n) { const out = []; for (let i = 5; i >= 0; i--) { const v = n % 16; n = Math.floor(n / 16); if (v) out[i] = D.ITEMS[v - 1].id; } return out.filter(Boolean); }
+// Six item slots, 6 bits each (up to 63 item types).
+function packItems(items) { let n = 0; for (let i = 0; i < 6; i++) n = n * 64 + (items[i] ? D.ITEM_INDEX[items[i]] + 1 : 0); return n; }
+function unpackItems(n) { const out = []; for (let i = 5; i >= 0; i--) { const v = n % 64; n = Math.floor(n / 64); if (v) out[i] = D.ITEMS[v - 1].id; } return out.filter(Boolean); }
 
 function heroBits(u) {
   let b = 0;
