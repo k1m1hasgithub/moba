@@ -575,6 +575,7 @@ function showEnd(view, actions) {
     b.addEventListener('click', () => { click(); a.fn(); });
     box.appendChild(b);
   }
+  $('hud').hidden = true;
   show('end', false);
   LF.audio.play(won ? 'victory' : 'defeat', 0.8);
 }

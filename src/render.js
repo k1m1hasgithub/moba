@@ -291,7 +291,7 @@ function draw(view, dt, opts) {
   for (const u of view.heroes) stepAnim(u, dt, view);
   list.sort((a, b) => viewY(a) - viewY(b));
   for (const u of list) {
-    if (u.kind === undefined) { upright(u.x, u.y); A.drawObstacle(ctx, u, now); ctx.restore(); continue; }
+    if (u.kind === 'tree' || u.kind === 'rock') { upright(u.x, u.y); A.drawObstacle(ctx, u, now); ctx.restore(); continue; }
     if (u.kind === 'tower' || u.kind === 'core') { drawStructure(u, player); continue; }
     drawUnit(u, player);
   }
@@ -303,7 +303,7 @@ function draw(view, dt, opts) {
   // Particles and rings
   drawFx(dt);
   // Bars, names
-  for (const u of list) if (u.kind) drawBars(u, player, uiK, view);
+  for (const u of list) if (u.kind !== 'tree' && u.kind !== 'rock') drawBars(u, player, uiK, view);
   // Floating texts
   for (const t of texts) {
     t.t += dt; t.y -= 46 * dt;

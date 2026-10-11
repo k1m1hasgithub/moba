@@ -25,9 +25,10 @@ function wrapClaudeRoom(r) {
   };
 }
 
+const localMe = rid(12); // one peer id per page, shared by every room (as on claude.ai)
 function localRoom(name) {
   const ch = new BroadcastChannel('lanefall:' + name);
-  const me = rid(12);
+  const me = localMe;
   let mine = {};
   const others = new Map();
   const listeners = new Set();

@@ -1,47 +1,61 @@
 # Lanefall
 
-A small one-lane MOBA that runs in the browser. You play **Lumen** (blue) against an AI hero, **Vex** (red).
-Push with your minion waves, take down the two enemy towers, then destroy the enemy Nexus.
+A 5v5, three-lane MOBA that runs in the browser. Pick one of ten heroes across five roles, then fight
+bots or play with friends in a lobby. Break the two towers in any lane, then destroy the enemy core.
 
-No build step and no dependencies: open `index.html` in a browser, or serve the folder:
+## Run it
 
 ```sh
-python3 -m http.server 8000   # then visit http://localhost:8000
+node server.js          # http://localhost:8080 — also enables online multiplayer
+# or, single player only:
+python3 -m http.server  # http://localhost:8000
 ```
+
+No build step and no dependencies.
+
+## Multiplayer
+
+The host's browser runs the match and streams compact snapshots; other players send only their inputs.
+Three transports share the same code (`src/net.js`), picked automatically:
+
+- **claude.ai**: when the page is published as an Artifact with the `room` capability, anyone the page
+  is shared with can join a lobby.
+- **server.js**: a small WebSocket relay; everyone connected to the server sees the lobby list.
+- **Same device**: without either, lobbies work between browser tabs (BroadcastChannel), handy for testing.
 
 ## Controls
 
-| Action | Mouse + keyboard | Touch |
+| Action | Keyboard + mouse | Touch |
 | --- | --- | --- |
-| Move / attack | Right-click (or left-click) the ground or an enemy; hold to steer | Tap; drag to steer |
-| Abilities | `Q` `W` `E` `R`, aimed at the cursor | Ability buttons, auto-aimed |
-| Shop | `B` while standing in your fountain | Shop button |
-| Stop | `S` | |
-| Pause | `P` or `Esc` | Pause button |
+| Move | `WASD` / arrows, or right-click the ground | Joystick (left side) |
+| Attack | Hold `Space`, or click an enemy | Attack button |
+| Skills | Hold `Q` / `E` / `R` to aim at the cursor, release to cast | Drag a skill button to aim, tap to auto-aim |
+| Recall | `B` | Home button |
+| Scoreboard | `Tab` | List button |
 
-The minimap is clickable and moves you to that spot.
+The ultimate unlocks at level 4. Items are bought automatically from each hero's build.
 
-## What's in it
+## Heroes
 
-- **Map**: one lane with a river ford in the middle. Each side has a fountain (heals allies, burns enemies),
-  a Nexus and two towers. A structure can't be damaged until the one in front of it falls.
-- **Minions**: a wave of 3 melee and 2 casters spawns every 30 seconds. Every third wave adds a siege minion
-  that does double damage to structures. Waves get slightly stronger over time.
-- **Towers**: shoot minions first, but switch to any hero who attacks an enemy hero within their range.
-- **Heroes**: ranged auto-attacks, levels 1 to 12 from nearby kills, gold from last hits (+2 gold/s passive).
-  - `Q` Arc Bolt: skillshot that hits the first enemy.
-  - `W` Blink: short teleport.
-  - `E` Mend: instant heal.
-  - `R` Starfall: delayed area blast, unlocks at level 3.
-- **Shop**: Longsword, Ruby Crystal, Sapphire Focus, Swift Boots, Quickglass. Six item slots.
-- **AI**: Vex farms minions, pokes with Arc Bolt, fights when ahead, respects your towers,
-  retreats to heal when low, buys items and pushes while you're dead.
-  The title screen runs an AI-vs-AI match in the background.
+| Role | Lane | Heroes |
+| --- | --- | --- |
+| EXP Lane | Top | Brann (berserker), Sela (spear fighter) |
+| Jungle | Jungle | Rook (assassin), Vex (feral hunter) |
+| Mid Lane | Mid | Lumen (light mage), Nyx (witch) |
+| Gold Lane | Bottom | Kestra (archer), Dax (gunslinger) |
+| Roam | Follows a lane | Gorr (tank), Mira (healer) |
 
-## Code layout
+Every hero has a passive, two skills and an ultimate. The jungle has buff camps (Azure Wisp, Ember Brute),
+small camps, and two river bosses: the Tidewarden (2:00) and the Elder Wyrm (8:00).
 
-- `index.html`: page structure, HUD and styles.
-- `game.js`: everything else (simulation, AI, rendering, input), split into labelled sections.
-  Tuning constants (stats, costs, cooldowns) are at the top.
+## Code
 
-In the browser console, `lanefall.game` exposes the current state and `lanefall.step(seconds)` fast-forwards the simulation.
+- `src/data.js`: map geometry, heroes, items, monsters, tuning
+- `src/sim.js`: the authoritative simulation (combat, skills, minions, towers, jungle, rewards)
+- `src/ai.js`: role-based bot brains
+- `src/art.js`, `src/render.js`: procedural animated characters, terrain and effects
+- `src/net.js`: transports, lobby, snapshot encoding
+- `src/input.js`, `src/ui.js`, `src/main.js`: controls, screens and HUD, main loop
+- `server.js`: static server + WebSocket relay
+
+In the browser console, `lanefall.game` is the live simulation and `lanefall.fast(seconds)` fast-forwards it.
