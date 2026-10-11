@@ -97,6 +97,7 @@ targeted) until an enemy walks into the same bush or the hidden hero deals damag
 - `src/sim.js`: the authoritative simulation (combat, skills, minions, towers, jungle, rewards)
 - `src/ai.js`: role-based bot brains
 - `src/art.js`, `src/render.js`: procedural animated characters, terrain and effects
+- `src/icons.js`: procedural icons for items, skills, hero passives, battle spells and buffs
 - `src/net.js`: transports, lobby, snapshot encoding
 - `src/input.js`, `src/ui.js`, `src/main.js`: controls, screens and HUD, main loop
 - `server.js`: static server + WebSocket relay

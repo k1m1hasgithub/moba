@@ -10,156 +10,11 @@ const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStar
 // ---------------------------------------------------------------------------
 // Generated icons
 // ---------------------------------------------------------------------------
-const iconCache = new Map();
-function skillIcon(heroId, key) {
-  const id = heroId + key;
-  if (iconCache.has(id)) return iconCache.get(id);
-  const def = D.HERO[heroId], sk = def.skill[key];
-  const c = document.createElement('canvas'); c.width = c.height = 96;
-  const g = c.getContext('2d');
-  const bg = g.createRadialGradient(40, 30, 4, 48, 48, 70);
-  bg.addColorStop(0, A.shade(def.look.trim, 0.1)); bg.addColorStop(0.55, A.shade(def.look.main, -0.25)); bg.addColorStop(1, A.shade(def.look.main, -0.7));
-  g.fillStyle = bg; g.fillRect(0, 0, 96, 96);
-  g.strokeStyle = '#fffbe8'; g.fillStyle = '#fffbe8'; g.lineWidth = 7; g.lineCap = 'round'; g.lineJoin = 'round';
-  g.shadowColor = 'rgba(0,0,0,0.6)'; g.shadowBlur = 6;
-  const t = sk.type;
-  g.save(); g.translate(48, 48);
-  if (t === 'line') {
-    g.rotate(-0.6);
-    g.beginPath(); g.moveTo(-30, 0); g.lineTo(26, 0); g.stroke();
-    g.beginPath(); g.moveTo(34, 0); g.lineTo(18, -12); g.lineTo(18, 12); g.closePath(); g.fill();
-    if (sk.pierce) { g.lineWidth = 3; g.beginPath(); g.moveTo(-36, -10); g.lineTo(-22, 0); g.lineTo(-36, 10); g.stroke(); }
-  } else if (t === 'circle') {
-    g.lineWidth = 5; g.beginPath(); g.arc(0, 0, 30, 0, TAU); g.stroke();
-    g.beginPath(); g.arc(0, 0, 16, 0, TAU); g.stroke();
-    A.star(g, 0, 0, 10, 4, 5); g.fill();
-  } else if (t === 'nova') {
-    for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; g.beginPath(); g.moveTo(Math.cos(a) * 12, Math.sin(a) * 12); g.lineTo(Math.cos(a) * 34, Math.sin(a) * 34); g.stroke(); }
-    g.beginPath(); g.arc(0, 0, 8, 0, TAU); g.fill();
-  } else if (t === 'cone') {
-    g.beginPath(); g.moveTo(-28, 16); g.lineTo(30, -26); g.moveTo(-28, 16); g.lineTo(34, 4); g.moveTo(-28, 16); g.lineTo(20, 30); g.stroke();
-  } else if (t === 'dash') {
-    for (const o of [-16, 6]) { g.beginPath(); g.moveTo(o, -20); g.lineTo(o + 20, 0); g.lineTo(o, 20); g.stroke(); }
-  } else if (t === 'leap') {
-    g.beginPath(); g.moveTo(-30, 24); g.quadraticCurveTo(0, -46, 28, 18); g.stroke();
-    g.beginPath(); g.moveTo(32, 26); g.lineTo(16, 18); g.lineTo(32, 6); g.closePath(); g.fill();
-  } else if (t === 'blink') {
-    A.star(g, -10, 6, 22, 7, 4); g.fill(); A.star(g, 22, -18, 11, 4, 4); g.fill();
-  } else if (t === 'buff') {
-    for (const o of [10, -8]) { g.beginPath(); g.moveTo(-20, o + 12); g.lineTo(0, o - 8); g.lineTo(20, o + 12); g.stroke(); }
-  } else if (t === 'zone') {
-    g.lineWidth = 6; g.beginPath();
-    for (let i = 0; i < 60; i++) { const a = i / 60 * TAU * 2.2, r = 4 + i * 0.5; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
-    g.stroke();
-  } else if (t === 'execute') {
-    g.beginPath(); g.moveTo(-26, -26); g.lineTo(26, 26); g.moveTo(26, -26); g.lineTo(-26, 26); g.stroke();
-  }
-  g.restore();
-  g.shadowBlur = 0;
-  g.lineWidth = key === 'ult' ? 8 : 5; g.strokeStyle = key === 'ult' ? '#f0c35a' : 'rgba(255,255,255,0.35)';
-  g.strokeRect(0, 0, 96, 96);
-  const url = c.toDataURL();
-  iconCache.set(id, url);
-  return url;
-}
-// Battle spell and Regen icons.
-const SPELL_TINT = { blink: '#7a6ad0', smite: '#d08a2a', reap: '#b03a4a', cleanse: '#3ab0c2', sprint: '#4ab06a', aegis: '#c2a24a', stonegaze: '#8a8f99', regen: '#3aa860', azure: '#3a7ad0', ember: '#d0502a', lord: '#8a4ad0' };
-function spellIcon(id) {
-  const key = 'spell:' + id;
-  if (iconCache.has(key)) return iconCache.get(key);
-  const c = document.createElement('canvas'); c.width = c.height = 96;
-  const g = c.getContext('2d');
-  const tint = SPELL_TINT[id] || '#888';
-  const bg = g.createRadialGradient(40, 30, 4, 48, 48, 70);
-  bg.addColorStop(0, A.shade(tint, 0.25)); bg.addColorStop(0.6, A.shade(tint, -0.35)); bg.addColorStop(1, A.shade(tint, -0.75));
-  g.fillStyle = bg; g.fillRect(0, 0, 96, 96);
-  g.strokeStyle = '#fffbe8'; g.fillStyle = '#fffbe8'; g.lineWidth = 7; g.lineCap = 'round'; g.lineJoin = 'round';
-  g.shadowColor = 'rgba(0,0,0,0.6)'; g.shadowBlur = 6;
-  g.save(); g.translate(48, 48);
-  switch (id) {
-    case 'blink': A.star(g, -12, 8, 20, 6, 4); g.fill(); A.star(g, 20, -16, 12, 4, 4); g.fill(); g.lineWidth = 3; g.setLineDash([4, 6]); g.beginPath(); g.moveTo(-6, 2); g.lineTo(14, -10); g.stroke(); break;
-    case 'smite': g.beginPath(); g.moveTo(6, -36); g.lineTo(-12, 2); g.lineTo(4, 2); g.lineTo(-8, 36); g.lineTo(18, -8); g.lineTo(2, -8); g.lineTo(14, -36); g.closePath(); g.fill(); break;
-    case 'reap': g.beginPath(); g.moveTo(-26, 30); g.lineTo(14, -22); g.stroke(); g.beginPath(); g.moveTo(14, -22); g.quadraticCurveTo(34, -30, 30, -6); g.quadraticCurveTo(22, -20, 6, -14); g.closePath(); g.fill(); break;
-    case 'cleanse': g.lineWidth = 6; g.beginPath(); g.arc(0, 0, 26, 0.3, TAU - 0.3); g.stroke(); g.beginPath(); g.moveTo(-12, 0); g.lineTo(-3, 10); g.lineTo(14, -10); g.stroke(); break;
-    case 'sprint': for (const o of [-18, 0, 18]) { g.beginPath(); g.moveTo(o - 10, -18); g.lineTo(o + 6, 0); g.lineTo(o - 10, 18); g.stroke(); } break;
-    case 'aegis': g.beginPath(); g.moveTo(0, -30); g.lineTo(26, -20); g.lineTo(22, 10); g.lineTo(0, 32); g.lineTo(-22, 10); g.lineTo(-26, -20); g.closePath(); g.fill(); g.fillStyle = A.shade(tint, -0.3); A.star(g, 0, -2, 12, 5, 5); g.fill(); break;
-    case 'stonegaze': g.beginPath(); g.ellipse(0, 0, 32, 18, 0, 0, TAU); g.stroke(); g.beginPath(); g.arc(0, 0, 10, 0, TAU); g.fill(); g.lineWidth = 3; for (const a of [-2.4, -1.57, -0.7]) { g.beginPath(); g.moveTo(Math.cos(a) * 24, Math.sin(a) * 24 - 4); g.lineTo(Math.cos(a) * 36, Math.sin(a) * 36 - 6); g.stroke(); } break;
-    case 'regen': g.fillRect(-8, -28, 16, 56); g.fillRect(-28, -8, 56, 16); break;
-    case 'azure': A.glow(g, 0, 0, 34, '#bfe0ff', 0.8); g.beginPath(); g.arc(0, 4, 16, 0, TAU); g.fill(); g.beginPath(); g.moveTo(-14, -2); g.quadraticCurveTo(0, -40, 14, -2); g.fill(); break;
-    case 'ember': g.beginPath(); g.moveTo(0, -32); g.quadraticCurveTo(26, -4, 18, 16); g.quadraticCurveTo(10, 32, 0, 32); g.quadraticCurveTo(-18, 30, -20, 12); g.quadraticCurveTo(-20, -6, -6, -14); g.quadraticCurveTo(-4, 0, 4, 2); g.quadraticCurveTo(10, -14, 0, -32); g.fill(); break;
-    case 'lord': g.beginPath(); g.moveTo(-28, 20); g.lineTo(-28, -14); g.lineTo(-14, 0); g.lineTo(0, -24); g.lineTo(14, 0); g.lineTo(28, -14); g.lineTo(28, 20); g.closePath(); g.fill(); break;
-    default: g.beginPath(); g.arc(0, 0, 20, 0, TAU); g.fill();
-  }
-  g.restore();
-  g.shadowBlur = 0; g.lineWidth = 5; g.strokeStyle = 'rgba(255,255,255,0.4)'; g.strokeRect(0, 0, 96, 96);
-  const url = c.toDataURL();
-  iconCache.set(key, url);
-  return url;
-}
-
-const ICON_TINT = {
-  boots: '#6a8bb0', machete: '#7a9a4a', sword: '#b0b8c2', bow: '#9a7a4a', fang: '#b04a4a', axe: '#c27a3a', staff: '#7a6ad0', clock: '#4ab0c2',
-  crown: '#a04ad0', armor: '#7a8a9a', helm: '#c2a24a', charm: '#4ac27a', dagger: '#a8b0b8', feather: '#5ac2c2', gem: '#8a6ae0', shard: '#4a8ae0',
-  ruby: '#d04a5a', chain: '#8a96a2', leaf: '#5ab05a', glove: '#c28a4a', tome: '#6a5ac2', orb: '#5a7ae0', belt: '#b07a4a', greatsword: '#d0d8e0',
-  stormbow: '#4ab0e0', hammer: '#b0905a', flower: '#d04a7a', thorns: '#6a8a5a', frost: '#7ac8f0',
-};
-const ITEM_TINT = { warboots: '#a0705a', magicboots: '#7a6ad0', swiftboots: '#3ab090' };
-const TIER_EDGE = { 1: '#f0c35a', 2: '#c9d2dc', 3: '#b07a4a' };
-function itemIcon(itemId) {
-  const id = 'item:' + itemId;
-  if (iconCache.has(id)) return iconCache.get(id);
-  const it = D.ITEM[itemId];
-  const c = document.createElement('canvas'); c.width = c.height = 64;
-  const g = c.getContext('2d');
-  const tint = ITEM_TINT[it.id] || ICON_TINT[it.icon] || '#8a8a8a';
-  const bg = g.createLinearGradient(0, 0, 0, 64);
-  bg.addColorStop(0, A.shade(tint, -0.35)); bg.addColorStop(1, A.shade(tint, -0.75));
-  g.fillStyle = bg; g.fillRect(0, 0, 64, 64);
-  if (it.tier === 1) A.glow(g, 32, 32, 34, A.shade(tint, 0.3), 0.35);
-  const hi = A.shade(tint, 0.45), dark = A.shade(tint, -0.5);
-  g.fillStyle = hi; g.strokeStyle = A.shade(tint, 0.6); g.lineWidth = 5; g.lineCap = 'round'; g.lineJoin = 'round';
-  g.save(); g.translate(32, 32);
-  const blade = (w, len) => { g.beginPath(); g.moveTo(-w, 10); g.lineTo(-w, -len + 8); g.lineTo(0, -len); g.lineTo(w, -len + 8); g.lineTo(w, 10); g.closePath(); g.fill(); };
-  switch (it.icon) {
-    case 'boots': g.beginPath(); g.moveTo(-10, -20); g.lineTo(2, -20); g.lineTo(2, 6); g.lineTo(18, 10); g.lineTo(18, 20); g.lineTo(-12, 20); g.closePath(); g.fill();
-      if (it.tier === 2) { g.fillStyle = dark; g.fillRect(-10, -12, 12, 4); g.fillStyle = '#fff'; g.globalAlpha = 0.6; g.beginPath(); g.moveTo(-20, -6); g.lineTo(-13, -6); g.moveTo(-22, 2); g.lineTo(-13, 2); g.lineWidth = 3; g.strokeStyle = '#fff'; g.stroke(); g.globalAlpha = 1; } break;
-    case 'sword': case 'machete': g.rotate(-0.8); g.fillRect(-4, -26, 8, 36); g.fillRect(-12, 8, 24, 5); g.fillStyle = '#5a4030'; g.fillRect(-3, 13, 6, 12); break;
-    case 'dagger': g.rotate(-0.8); blade(4, 18); g.fillRect(-9, 8, 18, 4); g.fillStyle = '#5a4030'; g.fillRect(-2.5, 12, 5, 9); break;
-    case 'greatsword': g.rotate(-0.8); blade(6, 28); g.fillStyle = dark; g.fillRect(-1.5, -18, 3, 26); g.fillStyle = '#f0c35a'; g.fillRect(-14, 8, 28, 6); g.fillStyle = '#5a4030'; g.fillRect(-3, 14, 6, 12); break;
-    case 'bow': g.beginPath(); g.arc(-6, 0, 22, -1.3, 1.3); g.stroke(); g.lineWidth = 2; g.beginPath(); g.moveTo(0, -21); g.lineTo(0, 21); g.stroke(); break;
-    case 'stormbow': g.beginPath(); g.arc(-6, 0, 22, -1.3, 1.3); g.stroke(); g.lineWidth = 2; g.beginPath(); g.moveTo(0, -21); g.lineTo(0, 21); g.stroke();
-      A.glow(g, 8, 0, 18, '#bfe8ff', 0.7); g.strokeStyle = '#ffffff'; g.lineWidth = 3; g.beginPath(); g.moveTo(14, -18); g.lineTo(4, -2); g.lineTo(14, 2); g.lineTo(4, 18); g.stroke(); break;
-    case 'fang': g.beginPath(); g.moveTo(-14, -20); g.quadraticCurveTo(10, -6, 4, 24); g.quadraticCurveTo(-2, 0, -14, -20); g.fill(); break;
-    case 'axe': g.fillStyle = '#6a4a2c'; g.save(); g.rotate(-0.7); g.fillRect(-3, -24, 6, 48); g.restore(); g.fillStyle = hi; g.beginPath(); g.arc(4, -10, 16, -1.5, 1.2); g.closePath(); g.fill(); break;
-    case 'hammer': g.fillStyle = '#6a4a2c'; g.save(); g.rotate(-0.6); g.fillRect(-3, -14, 6, 40); g.fillStyle = hi; g.fillRect(-16, -26, 32, 16); g.fillStyle = dark; g.fillRect(-16, -20, 32, 3); g.restore(); break;
-    case 'staff': g.beginPath(); g.moveTo(-14, 24); g.lineTo(10, -14); g.stroke(); A.glow(g, 12, -16, 16, '#d0c8ff', 0.9); g.fillStyle = '#fff'; A.star(g, 12, -16, 9, 4, 5); g.fill(); break;
-    case 'clock': g.beginPath(); g.moveTo(-14, -20); g.lineTo(14, -20); g.lineTo(-14, 20); g.lineTo(14, 20); g.closePath(); g.stroke(); g.fillStyle = '#f0e0a0'; g.beginPath(); g.moveTo(-8, 16); g.lineTo(8, 16); g.lineTo(0, 6); g.closePath(); g.fill(); break;
-    case 'crown': g.beginPath(); g.moveTo(-20, 14); g.lineTo(-20, -10); g.lineTo(-10, 2); g.lineTo(0, -16); g.lineTo(10, 2); g.lineTo(20, -10); g.lineTo(20, 14); g.closePath(); g.fill(); A.glow(g, 0, 4, 10, '#e0b0ff', 0.9); break;
-    case 'armor': g.beginPath(); g.moveTo(-20, -18); g.lineTo(20, -18); g.lineTo(16, 18); g.lineTo(0, 24); g.lineTo(-16, 18); g.closePath(); g.fill(); g.strokeStyle = dark; g.lineWidth = 3; g.beginPath(); g.moveTo(0, -18); g.lineTo(0, 22); g.stroke(); break;
-    case 'thorns': g.beginPath(); g.moveTo(-20, -18); g.lineTo(20, -18); g.lineTo(16, 18); g.lineTo(0, 24); g.lineTo(-16, 18); g.closePath(); g.fill();
-      g.fillStyle = A.shade(tint, 0.7); for (const [x, y, r] of [[-22, -6, 3.6], [22, -6, 0.5], [-18, 14, 3.9], [18, 14, 0.2], [0, -20, 4.7]]) { g.save(); g.translate(x, y); g.rotate(r); g.beginPath(); g.moveTo(-4, 0); g.lineTo(0, -10); g.lineTo(4, 0); g.fill(); g.restore(); } break;
-    case 'chain': g.lineWidth = 4; for (const [x, y] of [[-9, -9], [9, -9], [-9, 9], [9, 9]]) { A.circle(g, x, y, 8); g.stroke(); } break;
-    case 'helm': g.beginPath(); g.arc(0, 4, 20, Math.PI, TAU); g.lineTo(20, 18); g.lineTo(-20, 18); g.closePath(); g.fill(); g.fillStyle = dark; g.fillRect(-12, 4, 24, 5); break;
-    case 'belt': g.fillRect(-24, -8, 48, 16); g.fillStyle = '#f0c35a'; g.fillRect(-9, -11, 18, 22); g.fillStyle = dark; g.fillRect(-4, -6, 8, 12); break;
-    case 'charm': A.glow(g, 0, 0, 26, '#b6ffc8', 0.8); g.beginPath(); g.moveTo(0, -20); g.lineTo(16, 0); g.lineTo(0, 20); g.lineTo(-16, 0); g.closePath(); g.fill(); break;
-    case 'gem': A.glow(g, 0, 0, 24, '#d8c8ff', 0.6); g.beginPath(); g.moveTo(-16, -6); g.lineTo(-8, -16); g.lineTo(8, -16); g.lineTo(16, -6); g.lineTo(0, 18); g.closePath(); g.fill(); g.fillStyle = '#fff'; g.globalAlpha = 0.5; g.beginPath(); g.moveTo(-8, -16); g.lineTo(0, -6); g.lineTo(8, -16); g.fill(); g.globalAlpha = 1; break;
-    case 'ruby': A.glow(g, 0, 0, 24, '#ffb0b8', 0.5); g.beginPath(); g.moveTo(0, -18); g.lineTo(15, -4); g.lineTo(9, 16); g.lineTo(-9, 16); g.lineTo(-15, -4); g.closePath(); g.fill(); g.fillStyle = '#fff'; g.globalAlpha = 0.45; g.beginPath(); g.moveTo(0, -18); g.lineTo(-6, -2); g.lineTo(-15, -4); g.fill(); g.globalAlpha = 1; break;
-    case 'shard': A.glow(g, 0, 0, 24, '#b8d8ff', 0.6); g.beginPath(); g.moveTo(0, -22); g.lineTo(9, 0); g.lineTo(0, 22); g.lineTo(-9, 0); g.closePath(); g.fill(); break;
-    case 'orb': A.glow(g, 0, 0, 28, '#c8d8ff', 0.8); g.fillStyle = '#fff'; A.circle(g, 0, 0, 13); g.fill(); g.fillStyle = hi; A.circle(g, 0, 0, 9); g.fill(); break;
-    case 'leaf': g.beginPath(); g.moveTo(-14, 16); g.quadraticCurveTo(-16, -14, 16, -18); g.quadraticCurveTo(14, 12, -14, 16); g.fill(); g.strokeStyle = dark; g.lineWidth = 2; g.beginPath(); g.moveTo(-14, 16); g.lineTo(10, -10); g.stroke(); break;
-    case 'feather': g.rotate(0.6); g.beginPath(); g.ellipse(0, -2, 8, 22, 0, 0, TAU); g.fill(); g.strokeStyle = dark; g.lineWidth = 2; g.beginPath(); g.moveTo(0, -22); g.lineTo(0, 26); g.stroke(); break;
-    case 'glove': g.beginPath(); g.moveTo(-12, 22); g.lineTo(-12, -4); g.lineTo(-16, -14); g.lineTo(-10, -16); g.lineTo(-6, -8); g.lineTo(-6, -20); g.lineTo(0, -20); g.lineTo(0, -10); g.lineTo(4, -20); g.lineTo(10, -18); g.lineTo(8, -6); g.lineTo(14, -12); g.lineTo(16, -6); g.lineTo(12, 22); g.closePath(); g.fill(); g.fillStyle = '#e8eef4'; for (const x of [-6, 2, 9]) { g.beginPath(); g.moveTo(x - 2, -18); g.lineTo(x + 1, -27); g.lineTo(x + 3, -18); g.fill(); } break;
-    case 'tome': g.fillRect(-18, -20, 36, 40); g.fillStyle = dark; g.fillRect(-18, -20, 6, 40); A.glow(g, 4, 0, 14, '#e0d8ff', 0.8); g.fillStyle = '#fff'; A.star(g, 4, 0, 8, 3, 5); g.fill(); break;
-    case 'flower': for (let i = 0; i < 5; i++) { g.save(); g.rotate(i / 5 * TAU); g.beginPath(); g.ellipse(0, -12, 8, 13, 0, 0, TAU); g.fill(); g.restore(); } g.fillStyle = '#ffe08a'; A.circle(g, 0, 0, 7); g.fill(); break;
-    case 'frost': g.lineWidth = 4; for (let i = 0; i < 3; i++) { g.save(); g.rotate(i / 3 * Math.PI); g.beginPath(); g.moveTo(0, -22); g.lineTo(0, 22); g.moveTo(-6, -16); g.lineTo(0, -10); g.lineTo(6, -16); g.moveTo(-6, 16); g.lineTo(0, 10); g.lineTo(6, 16); g.stroke(); g.restore(); } break;
-    default: g.beginPath(); g.arc(0, 0, 16, 0, TAU); g.fill();
-  }
-  g.restore();
-  g.strokeStyle = TIER_EDGE[it.tier]; g.globalAlpha = it.tier === 1 ? 0.95 : 0.6; g.lineWidth = it.tier === 1 ? 4 : 3; g.strokeRect(1, 1, 62, 62); g.globalAlpha = 1;
-  const url = c.toDataURL();
-  iconCache.set(id, url);
-  return url;
-}
+// Icons are drawn by src/icons.js.
+const skillIcon = (heroId, key) => LF.icons.skill(heroId, key);
+const passiveIcon = heroId => LF.icons.passive(heroId);
+const spellIcon = id => LF.icons.spell(id);
+const itemIcon = id => LF.icons.item(id);
 
 // ---------------------------------------------------------------------------
 // Screens
@@ -286,7 +141,7 @@ function renderDetail(id) {
   $('dStats').innerHTML = meter('Durability', (s.hp + s.armor * 12 - 500) / 700) + meter('Damage', (s.ad - 40) / 30 + (h.cls === 'Mage' ? 0.45 : 0)) +
     meter('Range', s.range / 400) + meter('Mobility', (s.ms - 250) / 55 + (h.skills.some(k => ['dash', 'leap', 'blink'].includes(k.type)) ? 0.3 : 0));
   const sk = h.skills.map(k => `<li><img src="${skillIcon(id, k.key)}" alt=""><div><strong>${k.key === 'ult' ? 'Ultimate · ' : ''}${esc(k.name)}<em>${k.cd}s · ${k.mana} mana</em></strong><p>${esc(k.desc)}</p></div></li>`).join('');
-  $('dSkills').innerHTML = `<li><img src="${A.portrait(id, 40)}" alt=""><div><strong>Passive · ${esc(h.passive.name)}</strong><p>${esc(h.passive.desc)}</p></div></li>` + sk;
+  $('dSkills').innerHTML = `<li><img src="${passiveIcon(id)}" alt=""><div><strong>Passive · ${esc(h.passive.name)}</strong><p>${esc(h.passive.desc)}</p></div></li>` + sk;
   $('dSpell').innerHTML = spellBlockHtml(id);
   $('dBuild').innerHTML = buildBlockHtml(id);
 }
@@ -663,7 +518,7 @@ function statusInfo(h, key, n) {
     const p = h.def.passive;
     const count = id === 'thirdshot' ? `${n}/3` : id === 'hotbarrels' ? `×${n}` : '';
     const state = { ambush: 'Ready', riposte: 'Ready', thirdshot: n === 2 ? 'Next attack empowered' : '' }[id] || 'Active';
-    return { icon: A.portrait(h.def.id, 64, h.team), name: p.name, tag: 'Hero passive', state, text: p.desc, count, cls: 'passive' };
+    return { icon: passiveIcon(h.def.id), name: p.name, tag: 'Hero passive', state, text: p.desc, count, cls: 'passive' };
   }
   if (kind === 'i') {
     const it = itemWithPassive(id === 'fury' ? 'fury' : id);
