@@ -254,7 +254,19 @@ input[type], .field input, .nick input, .join-row input {
 .hud-buttons { display: flex; gap: 6px; }
 .hud-btn { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 8px; border: 1px solid var(--edge); background: var(--panel); color: var(--ink); }
 .hud-btn svg { width: 18px; height: 18px; }
-.hud-btn.muted .wave { opacity: 0.15; }
+.hud-btn .cross, .sound-toggle .cross { display: none; }
+.muted .wave { display: none; }
+.muted .cross { display: inline; }
+.sound-toggle {
+  position: absolute; top: calc(14px + var(--safe-t)); right: calc(18px + var(--safe-r)); z-index: 4;
+  display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px;
+  border: 1px solid var(--edge-hi); background: var(--panel); color: var(--ink); font-size: 13px; font-weight: 600;
+}
+.sound-toggle svg { width: 18px; height: 18px; }
+.sound-toggle:hover { border-color: var(--gold); }
+.sound-toggle.muted { color: var(--muted); }
+#hud:not([hidden]) ~ .sound-toggle, #select:not([hidden]) ~ .sound-toggle, #mp:not([hidden]) ~ .sound-toggle,
+#lobby:not([hidden]) ~ .sound-toggle, #how:not([hidden]) ~ .sound-toggle { display: none; }
 .feed { position: absolute; top: calc(60px + var(--safe-t)); right: calc(10px + var(--safe-r)); display: grid; gap: 4px; justify-items: end; }
 .feed-row { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: 6px; background: var(--panel); border: 1px solid var(--edge); animation: feedIn 0.25s ease-out; font-size: 12px; }
 .feed-row img { width: 26px; height: 26px; border-radius: 5px; border: 2px solid var(--blue); }

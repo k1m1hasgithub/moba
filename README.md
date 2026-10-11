@@ -32,6 +32,7 @@ Three transports share the same code (`src/net.js`), picked automatically:
 | Skills | Hold `Q` / `E` / `R` to aim at the cursor, release to cast | Drag a skill button to aim, tap to auto-aim |
 | Recall | `B` | Home button |
 | Scoreboard | `Tab` | List button |
+| Mute sound | `M` | Sound button (menu, pause menu or in-game) |
 
 The ultimate unlocks at level 4. Items are bought automatically from each hero's build.
 

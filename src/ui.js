@@ -136,7 +136,10 @@ function init() {
   $('howRoles').innerHTML = D.ROLES.map(r => `<dt>${r.name}</dt><dd>${r.desc} ${heroNames(r.id)}</dd>`).join('');
   $('scoreClose').addEventListener('click', () => showScore(false));
   $('btnScore').addEventListener('click', () => showScore($('scoreboard').hidden));
-  $('btnSound').addEventListener('click', () => { LF.audio.setMuted(!LF.audio.muted); syncSound(); });
+  for (const id of ['btnSound', 'soundToggle', 'pauseSound']) $(id).addEventListener('click', toggleSound);
+  window.addEventListener('keydown', e => {
+    if (e.key.toLowerCase() === 'm' && !e.repeat && !e.ctrlKey && !e.metaKey && !(e.target && e.target.tagName === 'INPUT')) toggleSound();
+  });
   $('btnMenu').addEventListener('click', () => LF.main.pause(true));
   $('resumeBtn').addEventListener('click', () => LF.main.pause(false));
   $('quitBtn').addEventListener('click', () => LF.main.quit());
@@ -148,7 +151,16 @@ function init() {
 }
 function heroNames(role) { return D.HEROES.filter(h => h.role === role).map(h => h.name).join(', ') + '.'; }
 function click() { LF.audio.play('click', 0.6); }
-function syncSound() { $('btnSound').classList.toggle('muted', LF.audio.muted); $('btnSound').setAttribute('aria-pressed', String(!LF.audio.muted)); }
+function toggleSound() { LF.audio.setMuted(!LF.audio.muted); syncSound(); if (!LF.audio.muted) LF.audio.play('click', 0.6); }
+function syncSound() {
+  const m = LF.audio.muted;
+  for (const id of ['btnSound', 'soundToggle']) {
+    $(id).classList.toggle('muted', m);
+    $(id).setAttribute('aria-label', m ? 'Unmute sound' : 'Mute sound');
+  }
+  $('soundToggle').querySelector('span').textContent = m ? 'Sound off' : 'Sound on';
+  $('pauseSound').querySelector('strong').textContent = m ? 'Sound: off' : 'Sound: on';
+}
 
 // ---------------------------------------------------------------------------
 // Hero select / gallery

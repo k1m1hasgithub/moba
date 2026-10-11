@@ -24,7 +24,7 @@
       </div>
       <div class="hud-buttons">
         <button class="hud-btn" id="btnScore" type="button" aria-label="Scoreboard" title="Scoreboard (Tab)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4h14M3 10h14M3 16h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
-        <button class="hud-btn" id="btnSound" type="button" aria-label="Sound" title="Sound"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8v4h3l4 3V5L6 8H3z" fill="currentColor"/><path class="wave" d="M13 7a4 4 0 010 6M15 5a7 7 0 010 10" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg></button>
+        <button class="hud-btn" id="btnSound" type="button" aria-label="Sound" title="Sound (M)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8v4h3l4 3V5L6 8H3z" fill="currentColor"/><path class="wave" d="M13 7a4 4 0 010 6M15 5a7 7 0 010 10" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/><path class="cross" d="M13 7l5 6M18 7l-5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
         <button class="hud-btn" id="btnMenu" type="button" aria-label="Menu" title="Menu (Esc)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4h3v12H6zM11 4h3v12h-3z" fill="currentColor"/></svg></button>
       </div>
     </div>
@@ -217,11 +217,13 @@
       <h2>Paused</h2>
       <div class="pause-actions">
         <button class="menu-btn primary" id="resumeBtn" type="button"><strong>Resume</strong></button>
+        <button class="menu-btn" id="pauseSound" type="button"><strong>Sound: on</strong></button>
         <button class="menu-btn" id="quitBtn" type="button"><strong id="quitLabel">Leave match</strong></button>
       </div>
     </div>
   </section>
 
+  <button class="sound-toggle" id="soundToggle" type="button" title="Mute or unmute (M)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8v4h3l4 3V5L6 8H3z" fill="currentColor"/><path class="wave" d="M13 7a4 4 0 010 6M15 5a7 7 0 010 10" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/><path class="cross" d="M13 7l5 6M18 7l-5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Sound on</span></button>
   <div id="rotate" class="rotate-hint" hidden>Turn your phone sideways for the best view.</div>
 </div>
 
