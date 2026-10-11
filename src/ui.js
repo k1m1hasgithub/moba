@@ -247,6 +247,7 @@ function mpStatus(tr) {
   if (!tr) { el.textContent = 'Multiplayer unavailable'; el.classList.add('bad'); $('mpHint').textContent = 'This browser cannot reach other players from here. Play vs AI still works.'; return; }
   el.textContent = tr.label; el.classList.add('ok');
   $('mpHint').textContent = tr.kind === 'claude' ? 'Friends need access to this page to join. Share it from the Share menu, then send them the lobby code.'
+    : tr.kind === 'local' && tr.limited ? 'Online lobbies are not available here, so only other tabs on this device can join. To play with friends, open the page signed in to claude.ai, and have the owner add them from the Share menu.'
     : tr.kind === 'local' ? 'Only other tabs on this device can see your lobby. To play across devices, open the game from its claude.ai link or run server.js.'
       : 'Anyone connected to this server can see your lobby.';
 }

@@ -158,14 +158,20 @@ async function joinLobby(code) {
     party = p;
     wireParty(p);
     const t0 = Date.now();
-    while (!p.hostPresence() && Date.now() - t0 < 6000) await new Promise(r => setTimeout(r, 150));
-    if (!p.hostPresence()) { p.leave(); party = null; $('mpHint').textContent = `No lobby with code ${code} answered. Check the code and try again.`; return; }
+    while (!p.hostPresence() && Date.now() - t0 < 10000) await new Promise(r => setTimeout(r, 150));
+    if (!p.hostPresence()) {
+      p.leave(); party = null;
+      $('mpHint').textContent = transport.kind === 'local'
+        ? `No lobby with code ${code} answered. This browser can only reach lobbies open in other tabs on this device.`
+        : `No lobby with code ${code} answered. Check the code, and make sure the host still has the lobby open.`;
+      return;
+    }
     p.hostSeenAt = Date.now();
     p.onPeers();
     mode = 'lobby';
     if (p.L.ph === 'game') startClient(); else LF.ui.openLobby(p);
   } catch (e) {
-    $('mpHint').textContent = 'Could not join that lobby.';
+    $('mpHint').textContent = e && e.message === 'no-connection' ? 'Could not connect to the lobby service. Reload the page and try again.' : 'Could not join that lobby.';
   }
 }
 

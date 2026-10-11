@@ -14,10 +14,21 @@ const rid = n => Array.from({ length: n }, () => 'abcdefghijkmnpqrstuvwxyz234567
 // Transports. A "room" here: presence(patch), peers(), onPeers(fn), self(), leave()
 // Peers: { peer, presence, isMe }
 // ---------------------------------------------------------------------------
+// On claude.ai `isMe` is true for every tab of the same account; only `sameTab` is this page.
+// The game treats each tab as its own player, so isMe is remapped to sameTab here.
 function wrapClaudeRoom(r) {
+  let raw = null, mapped = [];
+  const peers = () => {
+    const now = r.peers();
+    if (now !== raw) {
+      raw = now;
+      mapped = now.filter(p => p.kind !== 'agent').map(p => ({ peer: p.peer, presence: p.presence || {}, isMe: !!p.sameTab }));
+    }
+    return mapped;
+  };
   return {
     presence: p => r.presence(p).catch(e => console.warn('presence', e && e.code)),
-    peers: () => r.peers().filter(p => p.kind !== 'agent'),
+    peers,
     onPeers: fn => r.onPeers(() => fn()),
     self: () => { const me = r.peers().find(p => p.sameTab); return me ? me.peer : null; },
     connected: () => r.connected(),
@@ -123,12 +134,14 @@ function wsTransport(url) {
 }
 
 let transportPromise = null;
+let inViewerNoRoom = false;
 function connect() {
   if (transportPromise) return transportPromise;
   transportPromise = (async () => {
     if (window.claude && typeof window.claude.use === 'function') {
       try {
         const room = await window.claude.use('room');
+        if (!room) inViewerNoRoom = true;
         if (room) {
           const lobby = wrapClaudeRoom(room);
           return { kind: 'claude', label: 'Online', lobby, join: async name => wrapClaudeRoom(await room.join(name)) };
@@ -143,7 +156,7 @@ function connect() {
     if (typeof BroadcastChannel !== 'undefined') {
       try {
         const lobby = localRoom('lobby');
-        return { kind: 'local', label: 'This device only', lobby, join: name => Promise.resolve(localRoom(name)) };
+        return { kind: 'local', label: 'This device only', limited: inViewerNoRoom, lobby, join: name => Promise.resolve(localRoom(name)) };
       } catch (e) { /* blocked */ }
     }
     return null;
@@ -487,8 +500,11 @@ class Party {
   async open(lobbyName) {
     this.room = await this.tr.join('lf-' + this.code);
     this.world = await this.tr.join('lf-' + this.code + '-w');
-    for (let i = 0; i < 40 && !this.room.self(); i++) await new Promise(r => setTimeout(r, 50));
-    this.me = this.room.self();
+    // Our peer label is the same in every room; it appears once the platform answers.
+    const selfId = () => this.room.self() || this.tr.lobby.self();
+    for (let i = 0; i < 100 && !selfId(); i++) await new Promise(r => setTimeout(r, 50));
+    this.me = selfId();
+    if (!this.me) { this.room.leave(); this.world.leave(); throw new Error('no-connection'); }
     if (this.isHost) {
       this.L.name = cleanName(lobbyName || this.nick + "'s lobby").slice(0, 24);
       this.L.slots[0] = { p: this.me, h: firstHeroFor(0), n: this.nick };
