@@ -53,7 +53,7 @@ function createGame(cfg) {
     const def = D.MONSTERS[c.type];
     const m = unit({
       kind: 'monster', mtype: c.type, team: NEUTRAL, side: c.side, home: { x: c.x, y: c.y }, x: c.x, y: c.y,
-      r: def.r, hp: def.hp, maxHp: def.hp, ad: def.ad, as: 0.8, range: 40, ms: 260, armor: 15,
+      r: def.r, hp: def.hp, maxHp: def.hp, ad: def.ad, as: 0.8, range: 40, ms: 200, armor: 15,
       dead: true, respawnAt: def.first, idx: i, boss: !!def.boss,
     });
     G.monsters.push(m); G.units.push(m);

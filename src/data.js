@@ -164,11 +164,11 @@ const ROLE_INDEX = Object.fromEntries(ROLES.map((r, i) => [r.id, i]));
 // Items
 // ---------------------------------------------------------------------------
 const ITEMS = [
-  { id: 'boots', name: 'Iron Greaves', icon: 'boots', cost: 300, ms: 40, armor: 10, text: '+40 move speed, +10 armor' },
-  { id: 'aboots', name: 'Arcane Sandals', icon: 'boots', cost: 300, ms: 40, cdr: 0.1, text: '+40 move speed, 10% cooldown reduction' },
+  { id: 'boots', name: 'Iron Greaves', icon: 'boots', cost: 300, ms: 25, armor: 10, text: '+25 move speed, +10 armor' },
+  { id: 'aboots', name: 'Arcane Sandals', icon: 'boots', cost: 300, ms: 25, cdr: 0.1, text: '+25 move speed, 10% cooldown reduction' },
   { id: 'machete', name: 'Hunter Machete', icon: 'machete', cost: 300, ad: 15, monster: 0.6, text: '+15 attack, +60% damage to monsters' },
   { id: 'blade', name: 'Hunter Blade', icon: 'sword', cost: 900, ad: 40, text: '+40 attack' },
-  { id: 'bow', name: 'Windrunner Bow', icon: 'bow', cost: 850, as: 0.3, ms: 10, text: '+30% attack speed, +10 move speed' },
+  { id: 'bow', name: 'Windrunner Bow', icon: 'bow', cost: 850, as: 0.3, ms: 5, text: '+30% attack speed, +5 move speed' },
   { id: 'fang', name: 'Bloodfang', icon: 'fang', cost: 900, ad: 25, ls: 0.12, text: '+25 attack, 12% lifesteal' },
   { id: 'ruin', name: 'Ruinblade', icon: 'sword', cost: 1400, ad: 55, as: 0.1, text: '+55 attack, +10% attack speed' },
   { id: 'axe', name: 'War Axe', icon: 'axe', cost: 1100, ad: 30, hp: 400, cdr: 0.1, text: '+30 attack, +400 health, 10% cooldown reduction' },
@@ -193,47 +193,47 @@ const HEROES = [
   // ----- Gold lane: marksmen -----
   {
     id: 'kestra', name: 'Kestra', role: 'gold', cls: 'Marksman', title: 'Windborne Archer',
-    stats: { hp: 560, hpL: 95, mana: 420, manaL: 35, ad: 58, adL: 5.5, armor: 14, armorL: 2, as: 0.85, asL: 0.025, range: 390, ms: 270, regen: 4 },
+    stats: { hp: 560, hpL: 95, mana: 420, manaL: 35, ad: 58, adL: 5.5, armor: 14, armorL: 2, as: 0.85, asL: 0.025, range: 290, ms: 200, regen: 4 },
     look: { skin: '#f0c9a5', main: '#2f7d55', trim: '#e9d58a', hair: '#8a4b2a', pants: '#3b3527', head: 'hood', weapon: 'bow', body: 'slim', cape: true },
     attack: { proj: 'arrow', speed: 1400 },
     passive: { id: 'thirdshot', name: 'Third Feather', desc: 'Every third attack deals 60% bonus damage and slows by 25%.' },
     skills: [
-      { key: 's1', name: 'Piercing Arrow', type: 'line', cd: 7, mana: 50, range: 920, speed: 1700, width: 40, pierce: true, vis: 'bigarrow', dmg: { b: 120, l: 22, ad: 0.9 }, cc: { slow: 0.3, dur: 1.5 }, ai: 'harass', desc: 'Fires an arrow that passes through every enemy in a line and slows them.' },
+      { key: 's1', name: 'Piercing Arrow', type: 'line', cd: 7, mana: 50, range: 650, speed: 1700, width: 40, pierce: true, vis: 'bigarrow', dmg: { b: 120, l: 22, ad: 0.9 }, cc: { slow: 0.3, dur: 1.5 }, ai: 'harass', desc: 'Fires an arrow that passes through every enemy in a line and slows them.' },
       { key: 's2', name: 'Tumble', type: 'dash', cd: 10, mana: 40, range: 300, speed: 1500, empower: 0.5, buff: { ms: 0.3, dur: 2 }, ai: 'escape', desc: 'Rolls a short distance. The next attack deals 50% bonus damage.' },
-      { key: 'ult', name: 'Arrow Storm', type: 'zone', cd: 40, mana: 90, range: 900, radius: 260, dur: 2.5, tick: 0.5, vis: 'rain', dmg: { b: 70, l: 16, ad: 0.35 }, cc: { slow: 0.35, dur: 0.6 }, ai: 'aoe', desc: 'Rains arrows on an area, damaging and slowing enemies inside.' },
+      { key: 'ult', name: 'Arrow Storm', type: 'zone', cd: 40, mana: 90, range: 650, radius: 260, dur: 2.5, tick: 0.5, vis: 'rain', dmg: { b: 70, l: 16, ad: 0.35 }, cc: { slow: 0.35, dur: 0.6 }, ai: 'aoe', desc: 'Rains arrows on an area, damaging and slowing enemies inside.' },
     ],
     build: ['boots', 'blade', 'bow', 'fang', 'ruin', 'thorn'],
   },
   {
     id: 'dax', name: 'Dax', role: 'gold', cls: 'Marksman', title: 'Dustline Gunslinger',
-    stats: { hp: 580, hpL: 98, mana: 400, manaL: 32, ad: 55, adL: 5, armor: 15, armorL: 2, as: 0.9, asL: 0.03, range: 370, ms: 270, regen: 4 },
+    stats: { hp: 580, hpL: 98, mana: 400, manaL: 32, ad: 55, adL: 5, armor: 15, armorL: 2, as: 0.9, asL: 0.03, range: 270, ms: 200, regen: 4 },
     look: { skin: '#c98d63', main: '#8a5a32', trim: '#f0b54a', hair: '#2b2b2b', pants: '#2f2b28', head: 'hat', weapon: 'guns', body: 'slim', cape: false },
     attack: { proj: 'bullet', speed: 1800 },
     passive: { id: 'hotbarrels', name: 'Hot Barrels', desc: 'Each attack grants 7% attack speed for 3 seconds, stacking 6 times.' },
     skills: [
-      { key: 's1', name: 'Scatter Shot', type: 'cone', cd: 6, mana: 45, range: 430, angle: 0.9, vis: 'shot', dmg: { b: 140, l: 24, ad: 1.0 }, ai: 'harass', desc: 'Blasts a cone of buckshot in front of him.' },
+      { key: 's1', name: 'Scatter Shot', type: 'cone', cd: 6, mana: 45, range: 360, angle: 0.9, vis: 'shot', dmg: { b: 140, l: 24, ad: 1.0 }, ai: 'harass', desc: 'Blasts a cone of buckshot in front of him.' },
       { key: 's2', name: 'Overdrive', type: 'buff', cd: 14, mana: 50, buff: { as: 0.45, ms: 0.2, dur: 4 }, ai: 'buff', desc: 'Gains 45% attack speed and 20% move speed for 4 seconds.' },
-      { key: 'ult', name: 'Deadeye', type: 'line', cd: 45, mana: 100, range: 2200, speed: 2800, width: 50, heroOnly: true, vis: 'snipe', dmg: { b: 320, l: 45, ad: 1.6 }, ai: 'execute', desc: 'A long-range shot that strikes the first enemy hero in its path.' },
+      { key: 'ult', name: 'Deadeye', type: 'line', cd: 45, mana: 100, range: 1100, speed: 2800, width: 50, heroOnly: true, vis: 'snipe', dmg: { b: 320, l: 45, ad: 1.6 }, ai: 'execute', desc: 'A long shot that strikes the first enemy hero in its path.' },
     ],
     build: ['boots', 'bow', 'blade', 'fang', 'ruin', 'plate'],
   },
   // ----- EXP lane: fighters -----
   {
     id: 'brann', name: 'Brann', role: 'exp', cls: 'Fighter', title: 'Ironmane Berserker',
-    stats: { hp: 780, hpL: 125, mana: 380, manaL: 30, ad: 66, adL: 5.5, armor: 22, armorL: 3, as: 0.8, asL: 0.015, range: 70, ms: 280, regen: 7 },
+    stats: { hp: 780, hpL: 125, mana: 380, manaL: 30, ad: 66, adL: 5.5, armor: 22, armorL: 3, as: 0.8, asL: 0.015, range: 70, ms: 210, regen: 7 },
     look: { skin: '#e2b08a', main: '#9b3b2e', trim: '#c9c9c9', hair: '#d68a3a', pants: '#4a3426', head: 'horns', weapon: 'axe', body: 'broad', cape: true },
     attack: { melee: true },
     passive: { id: 'bloodlust', name: 'Bloodlust', desc: 'Heals for 15% of all damage he deals.' },
     skills: [
       { key: 's1', name: 'Cleave', type: 'nova', cd: 6, mana: 40, radius: 210, vis: 'cleave', dmg: { b: 130, l: 22, ad: 0.8 }, healPerHero: 0.05, ai: 'aoe', desc: 'Swings his axe around him and heals 5% max health per hero hit.' },
-      { key: 's2', name: 'Charge', type: 'dash', cd: 11, mana: 50, range: 430, speed: 1300, width: 60, stopOnHero: true, dmg: { b: 90, l: 15, ad: 0.6 }, cc: { stun: 0.8 }, ai: 'engage', desc: 'Charges forward. The first enemy hero hit is stunned.' },
-      { key: 'ult', name: 'Warcry Leap', type: 'leap', cd: 40, mana: 80, range: 650, radius: 260, vis: 'slam', dmg: { b: 220, l: 35, ad: 1.1 }, cc: { slow: 0.4, dur: 2 }, buff: { ad: 0.25, dur: 5 }, ai: 'engage', desc: 'Leaps into an area, slows enemies and gains 25% attack for 5 seconds.' },
+      { key: 's2', name: 'Charge', type: 'dash', cd: 11, mana: 50, range: 360, speed: 1300, width: 60, stopOnHero: true, dmg: { b: 90, l: 15, ad: 0.6 }, cc: { stun: 0.8 }, ai: 'engage', desc: 'Charges forward. The first enemy hero hit is stunned.' },
+      { key: 'ult', name: 'Warcry Leap', type: 'leap', cd: 40, mana: 80, range: 500, radius: 260, vis: 'slam', dmg: { b: 220, l: 35, ad: 1.1 }, cc: { slow: 0.4, dur: 2 }, buff: { ad: 0.25, dur: 5 }, ai: 'engage', desc: 'Leaps into an area, slows enemies and gains 25% attack for 5 seconds.' },
     ],
     build: ['boots', 'axe', 'fang', 'plate', 'thorn', 'ruin'],
   },
   {
     id: 'sela', name: 'Sela', role: 'exp', cls: 'Fighter', title: 'Shieldmaiden of the Tide',
-    stats: { hp: 740, hpL: 120, mana: 380, manaL: 30, ad: 64, adL: 5.5, armor: 24, armorL: 3, as: 0.85, asL: 0.015, range: 95, ms: 280, regen: 7 },
+    stats: { hp: 740, hpL: 120, mana: 380, manaL: 30, ad: 64, adL: 5.5, armor: 24, armorL: 3, as: 0.85, asL: 0.015, range: 95, ms: 210, regen: 7 },
     look: { skin: '#f3d2b8', main: '#3d5fa8', trim: '#e8e3d0', hair: '#f2e3a0', pants: '#2d3446', head: 'winged', weapon: 'spear', body: 'slim', cape: true },
     attack: { melee: true },
     passive: { id: 'riposte', name: 'Riposte', desc: 'After using a skill, her next attack deals 60% bonus damage and heals her.' },
@@ -247,52 +247,52 @@ const HEROES = [
   // ----- Mid lane: mages -----
   {
     id: 'lumen', name: 'Lumen', role: 'mid', cls: 'Mage', title: 'Keeper of the Last Light',
-    stats: { hp: 540, hpL: 90, mana: 520, manaL: 45, ad: 50, adL: 3, armor: 12, armorL: 2, as: 0.75, asL: 0.015, range: 370, ms: 265, regen: 4 },
+    stats: { hp: 540, hpL: 90, mana: 520, manaL: 45, ad: 50, adL: 3, armor: 12, armorL: 2, as: 0.75, asL: 0.015, range: 270, ms: 200, regen: 4 },
     look: { skin: '#f6dcc3', main: '#f1efe6', trim: '#f0c24e', hair: '#f7f1d0', pants: '#cfc8b4', head: 'hair', weapon: 'staff', body: 'robe', cape: false },
     attack: { proj: 'light', speed: 1200 },
     passive: { id: 'radiance', name: 'Radiance', desc: 'Skills deal 15% bonus damage to enemies below half health.' },
     skills: [
-      { key: 's1', name: 'Arc Bolt', type: 'line', cd: 5, mana: 55, range: 920, speed: 1350, width: 38, vis: 'bolt', dmg: { b: 150, l: 28, ap: 0.8 }, ai: 'harass', desc: 'Fires a bolt of light that hits the first enemy.' },
-      { key: 's2', name: 'Radiant Field', type: 'circle', cd: 11, mana: 70, range: 760, radius: 200, delay: 0.7, vis: 'field', dmg: { b: 130, l: 24, ap: 0.6 }, cc: { stun: 1.0 }, ai: 'engage', desc: 'Marks an area. After a moment it bursts and stuns enemies inside.' },
-      { key: 'ult', name: 'Starfall', type: 'circle', cd: 42, mana: 110, range: 900, radius: 280, delay: 1.0, vis: 'star', dmg: { b: 380, l: 55, ap: 1.2 }, ai: 'aoe', desc: 'Calls a falling star onto a large area.' },
+      { key: 's1', name: 'Arc Bolt', type: 'line', cd: 5, mana: 55, range: 650, speed: 1350, width: 38, vis: 'bolt', dmg: { b: 150, l: 28, ap: 0.8 }, ai: 'harass', desc: 'Fires a bolt of light that hits the first enemy.' },
+      { key: 's2', name: 'Radiant Field', type: 'circle', cd: 11, mana: 70, range: 560, radius: 200, delay: 0.7, vis: 'field', dmg: { b: 130, l: 24, ap: 0.6 }, cc: { stun: 1.0 }, ai: 'engage', desc: 'Marks an area. After a moment it bursts and stuns enemies inside.' },
+      { key: 'ult', name: 'Starfall', type: 'circle', cd: 42, mana: 110, range: 650, radius: 280, delay: 1.0, vis: 'star', dmg: { b: 380, l: 55, ap: 1.2 }, ai: 'aoe', desc: 'Calls a falling star onto a large area.' },
     ],
     build: ['aboots', 'staff', 'clock', 'crown', 'helm', 'plate'],
   },
   {
     id: 'nyx', name: 'Nyx', role: 'mid', cls: 'Mage', title: 'Witch of the Hollow Moon',
-    stats: { hp: 550, hpL: 92, mana: 500, manaL: 45, ad: 48, adL: 3, armor: 12, armorL: 2, as: 0.75, asL: 0.015, range: 360, ms: 265, regen: 4 },
+    stats: { hp: 550, hpL: 92, mana: 500, manaL: 45, ad: 48, adL: 3, armor: 12, armorL: 2, as: 0.75, asL: 0.015, range: 270, ms: 200, regen: 4 },
     look: { skin: '#dccbea', main: '#4a2a6e', trim: '#b98cff', hair: '#1d1230', pants: '#2a1940', head: 'witch', weapon: 'orb', body: 'robe', cape: true },
     attack: { proj: 'hex', speed: 1100 },
     passive: { id: 'hex', name: 'Hex', desc: 'Skill hits slow enemies by 20% for 1.2 seconds.' },
     skills: [
-      { key: 's1', name: 'Hex Orb', type: 'line', cd: 9, mana: 60, range: 860, speed: 1050, width: 46, vis: 'hexorb', dmg: { b: 140, l: 24, ap: 0.7 }, cc: { stun: 0.9 }, ai: 'engage', desc: 'Throws a cursed orb that stuns the first enemy it hits.' },
-      { key: 's2', name: 'Shade Step', type: 'blink', cd: 12, mana: 50, range: 380, ai: 'escape', desc: 'Steps through the shadows to a nearby spot.' },
-      { key: 'ult', name: 'Void Rift', type: 'zone', cd: 40, mana: 100, range: 780, radius: 250, dur: 3, tick: 0.5, pull: 140, vis: 'rift', dmg: { b: 90, l: 16, ap: 0.35 }, cc: { slow: 0.5, dur: 0.6 }, ai: 'aoe', desc: 'Tears open a rift that drags enemies toward its center.' },
+      { key: 's1', name: 'Hex Orb', type: 'line', cd: 9, mana: 60, range: 620, speed: 1050, width: 46, vis: 'hexorb', dmg: { b: 140, l: 24, ap: 0.7 }, cc: { stun: 0.9 }, ai: 'engage', desc: 'Throws a cursed orb that stuns the first enemy it hits.' },
+      { key: 's2', name: 'Shade Step', type: 'blink', cd: 12, mana: 50, range: 320, ai: 'escape', desc: 'Steps through the shadows to a nearby spot.' },
+      { key: 'ult', name: 'Void Rift', type: 'zone', cd: 40, mana: 100, range: 580, radius: 250, dur: 3, tick: 0.5, pull: 140, vis: 'rift', dmg: { b: 90, l: 16, ap: 0.35 }, cc: { slow: 0.5, dur: 0.6 }, ai: 'aoe', desc: 'Tears open a rift that drags enemies toward its center.' },
     ],
     build: ['aboots', 'staff', 'crown', 'clock', 'thorn', 'plate'],
   },
   // ----- Jungle: assassins -----
   {
     id: 'rook', name: 'Rook', role: 'jungle', cls: 'Assassin', title: 'The Quiet Knife',
-    stats: { hp: 640, hpL: 100, mana: 400, manaL: 30, ad: 68, adL: 6, armor: 18, armorL: 2.5, as: 0.9, asL: 0.02, range: 65, ms: 300, regen: 5 },
+    stats: { hp: 640, hpL: 100, mana: 400, manaL: 30, ad: 68, adL: 6, armor: 18, armorL: 2.5, as: 0.9, asL: 0.02, range: 65, ms: 225, regen: 5 },
     look: { skin: '#caa48a', main: '#2a2f3a', trim: '#7ad1c9', hair: '#111111', pants: '#1c2028', head: 'mask', weapon: 'daggers', body: 'slim', cape: true },
     attack: { melee: true },
     passive: { id: 'ambush', name: 'Ambush', desc: 'The first attack after 4 seconds out of combat deals 80% bonus damage. Deals 40% more to monsters.' },
     skills: [
       { key: 's1', name: 'Shadow Dash', type: 'dash', cd: 6, mana: 35, range: 400, speed: 1700, width: 70, dmg: { b: 110, l: 20, ad: 0.8 }, ai: 'engage', jungle: true, desc: 'Dashes through enemies, cutting everything in his path.' },
       { key: 's2', name: 'Fan of Knives', type: 'nova', cd: 7, mana: 40, radius: 250, vis: 'knives', dmg: { b: 120, l: 22, ad: 0.7 }, cc: { slow: 0.3, dur: 1.5 }, ai: 'aoe', jungle: true, desc: 'Throws knives in every direction and slows enemies hit.' },
-      { key: 'ult', name: 'Execute', type: 'execute', cd: 30, mana: 70, range: 520, dmg: { b: 260, l: 40, ad: 1.2, missing: 0.25 }, ai: 'execute', desc: 'Blinks to the nearest enemy hero and strikes for damage that grows with their missing health. Refunds half its cooldown on a kill.' },
+      { key: 'ult', name: 'Execute', type: 'execute', cd: 30, mana: 70, range: 420, dmg: { b: 260, l: 40, ad: 1.2, missing: 0.25 }, ai: 'execute', desc: 'Blinks to the nearest enemy hero and strikes for damage that grows with their missing health. Refunds half its cooldown on a kill.' },
     ],
     build: ['machete', 'boots', 'blade', 'fang', 'ruin', 'plate'],
   },
   {
     id: 'vex', name: 'Vex', role: 'jungle', cls: 'Assassin', title: 'Redclaw Stalker',
-    stats: { hp: 660, hpL: 105, mana: 380, manaL: 28, ad: 66, adL: 6, armor: 18, armorL: 2.5, as: 0.9, asL: 0.025, range: 65, ms: 300, regen: 5 },
+    stats: { hp: 660, hpL: 105, mana: 380, manaL: 28, ad: 66, adL: 6, armor: 18, armorL: 2.5, as: 0.9, asL: 0.025, range: 65, ms: 225, regen: 5 },
     look: { skin: '#b9806a', main: '#7a2e2e', trim: '#ffb04a', hair: '#e04a3a', pants: '#3a1e1a', head: 'beast', weapon: 'claws', body: 'slim', cape: false },
     attack: { melee: true },
     passive: { id: 'feral', name: 'Feral', desc: 'Attacks heal for 10% of damage dealt. Deals 40% more to monsters.' },
     skills: [
-      { key: 's1', name: 'Pounce', type: 'leap', cd: 8, mana: 40, range: 520, radius: 170, vis: 'pounce', dmg: { b: 130, l: 22, ad: 0.9 }, cc: { slow: 0.3, dur: 1.5 }, ai: 'engage', jungle: true, desc: 'Leaps to a spot and rakes enemies where she lands.' },
+      { key: 's1', name: 'Pounce', type: 'leap', cd: 8, mana: 40, range: 420, radius: 170, vis: 'pounce', dmg: { b: 130, l: 22, ad: 0.9 }, cc: { slow: 0.3, dur: 1.5 }, ai: 'engage', jungle: true, desc: 'Leaps to a spot and rakes enemies where she lands.' },
       { key: 's2', name: 'Rend', type: 'cone', cd: 5, mana: 30, range: 280, angle: 1.6, vis: 'claw', dmg: { b: 115, l: 20, ad: 0.8 }, cc: { slow: 0.2, dur: 1 }, ai: 'harass', jungle: true, desc: 'Slashes in a wide arc in front of her.' },
       { key: 'ult', name: 'Bloodfrenzy', type: 'buff', cd: 40, mana: 60, buff: { as: 0.5, ms: 0.25, ls: 0.2, dur: 6 }, ai: 'buff', desc: 'For 6 seconds gains 50% attack speed, 25% move speed and 20% lifesteal.' },
     ],
@@ -301,7 +301,7 @@ const HEROES = [
   // ----- Roam: tank and support -----
   {
     id: 'gorr', name: 'Gorr', role: 'roam', cls: 'Tank', title: 'The Walking Mountain',
-    stats: { hp: 920, hpL: 140, mana: 400, manaL: 30, ad: 52, adL: 3.5, armor: 30, armorL: 4, as: 0.7, asL: 0.01, range: 75, ms: 275, regen: 9 },
+    stats: { hp: 920, hpL: 140, mana: 400, manaL: 30, ad: 52, adL: 3.5, armor: 30, armorL: 4, as: 0.7, asL: 0.01, range: 75, ms: 205, regen: 9 },
     look: { skin: '#8f9aa3', main: '#5f6b52', trim: '#c7b27a', hair: '#5d6670', pants: '#3b4234', head: 'stone', weapon: 'mace', body: 'heavy', cape: false, scale: 1.12 },
     attack: { melee: true },
     passive: { id: 'granite', name: 'Granite Skin', desc: 'Takes 15% less damage from every source.' },
@@ -314,14 +314,14 @@ const HEROES = [
   },
   {
     id: 'mira', name: 'Mira', role: 'roam', cls: 'Support', title: 'Bloom of the Glade',
-    stats: { hp: 640, hpL: 100, mana: 480, manaL: 40, ad: 46, adL: 3, armor: 18, armorL: 2.5, as: 0.75, asL: 0.015, range: 350, ms: 270, regen: 5 },
+    stats: { hp: 640, hpL: 100, mana: 480, manaL: 40, ad: 46, adL: 3, armor: 18, armorL: 2.5, as: 0.75, asL: 0.015, range: 260, ms: 200, regen: 5 },
     look: { skin: '#f2cdb0', main: '#6bbf8a', trim: '#f7a6c1', hair: '#c06a3a', pants: '#3e6a4e', head: 'flower', weapon: 'wand', body: 'robe', cape: true },
     attack: { proj: 'petal', speed: 1150 },
     passive: { id: 'verdant', name: 'Verdant', desc: 'Nearby allies regenerate health, and her heals are 20% stronger.' },
     skills: [
-      { key: 's1', name: 'Thorn Snare', type: 'line', cd: 9, mana: 55, range: 860, speed: 1150, width: 46, vis: 'snare', dmg: { b: 90, l: 16, ap: 0.5 }, cc: { root: 1.3 }, ai: 'engage', desc: 'Throws a seed that roots the first enemy hit in place.' },
+      { key: 's1', name: 'Thorn Snare', type: 'line', cd: 9, mana: 55, range: 620, speed: 1150, width: 46, vis: 'snare', dmg: { b: 90, l: 16, ap: 0.5 }, cc: { root: 1.3 }, ai: 'engage', desc: 'Throws a seed that roots the first enemy hit in place.' },
       { key: 's2', name: 'Bloom', type: 'nova', cd: 9, mana: 60, radius: 420, vis: 'bloom', heal: { b: 120, l: 22, ap: 0.5 }, ai: 'heal', desc: 'Heals herself and every nearby ally.' },
-      { key: 'ult', name: 'Sanctuary', type: 'zone', cd: 50, mana: 100, range: 620, radius: 300, dur: 3.5, tick: 0.5, vis: 'sanctuary', heal: { b: 60, l: 10, ap: 0.2 }, cc: { slow: 0.3, dur: 0.6 }, ai: 'heal', desc: 'Grows a grove that heals allies and slows enemies inside.' },
+      { key: 'ult', name: 'Sanctuary', type: 'zone', cd: 50, mana: 100, range: 520, radius: 300, dur: 3.5, tick: 0.5, vis: 'sanctuary', heal: { b: 60, l: 10, ap: 0.2 }, cc: { slow: 0.3, dur: 0.6 }, ai: 'heal', desc: 'Grows a grove that heals allies and slows enemies inside.' },
     ],
     build: ['aboots', 'charm', 'clock', 'helm', 'plate', 'thorn'],
   },
@@ -331,9 +331,9 @@ const HERO_INDEX = Object.fromEntries(HEROES.map((h, i) => [h.id, i]));
 for (const h of HEROES) h.skill = Object.fromEntries(h.skills.map(s => [s.key, s]));
 
 const MINION = {
-  melee: { hp: 520, ad: 26, range: 40, as: 0.9, ms: 210, r: 18, gold: 28, xp: 40, armor: 8 },
-  caster: { hp: 360, ad: 34, range: 330, as: 0.75, ms: 210, r: 16, gold: 22, xp: 32, armor: 0, proj: 'minion', speed: 750 },
-  siege: { hp: 1100, ad: 70, range: 360, as: 0.55, ms: 200, r: 24, gold: 60, xp: 70, armor: 20, proj: 'cannon', speed: 650, siege: 2 },
+  melee: { hp: 520, ad: 26, range: 40, as: 0.9, ms: 165, r: 18, gold: 28, xp: 40, armor: 8 },
+  caster: { hp: 360, ad: 34, range: 260, as: 0.75, ms: 165, r: 16, gold: 22, xp: 32, armor: 0, proj: 'minion', speed: 750 },
+  siege: { hp: 1100, ad: 70, range: 280, as: 0.55, ms: 155, r: 24, gold: 60, xp: 70, armor: 20, proj: 'cannon', speed: 650, siege: 2 },
 };
 
 const ULT_LEVEL = 4, MAX_LEVEL = 15;
