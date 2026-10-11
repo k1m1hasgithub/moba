@@ -144,6 +144,9 @@ function connect() {
         if (!room) inViewerNoRoom = true;
         if (room) {
           const lobby = wrapClaudeRoom(room);
+          // Record any terminal error the platform reports (not_granted, revoked, ...).
+          room.onConnection(() => {}, e => { lobby.error = e && e.code; });
+          room.onPeers(() => {}, e => { lobby.error = e && e.code; });
           return { kind: 'claude', label: 'Online', lobby, join: async name => wrapClaudeRoom(await room.join(name)) };
         }
       } catch (e) { /* fall through */ }

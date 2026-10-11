@@ -169,7 +169,7 @@ async function joinLobby(code) {
       $('mpHint').textContent = (transport.kind === 'local'
         ? `No lobby with code ${code} answered. This browser can only reach lobbies open in other tabs on this device.`
         : `No lobby with code ${code} answered. Keep the host's game visible on screen (not in a background tab) and try again.`)
-        + ` [${conn ? 'online' : 'offline'} · ${here} here · lobby ${listed ? 'listed' : 'not listed'} · ${inRoom} in room]`;
+        + ` [${conn ? 'online' : 'offline'} · ${here} here · lobby ${listed ? 'listed' : 'not listed'} · ${inRoom} in room${transport.lobby.error ? ' · error ' + transport.lobby.error : ''}]`;
       return;
     }
     p.hostSeenAt = Date.now();

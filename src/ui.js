@@ -257,7 +257,7 @@ function netCount(tr) {
   const el = $('netStatus');
   const n = tr.lobby.peers().length;
   const live = tr.lobby.connected ? tr.lobby.connected() : true;
-  el.textContent = `${tr.label} · ${live ? `${n} here` : 'connecting…'}`;
+  el.textContent = `${tr.label} · ${live ? `${n} here` : 'connecting…'}${tr.lobby.error ? ` · error: ${tr.lobby.error}` : ''}`;
   el.title = 'Number of open game pages that can see each other\'s lobbies, including yours.';
 }
 function renderLobbyList(tr) {
