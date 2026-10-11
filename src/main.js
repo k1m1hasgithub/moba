@@ -160,10 +160,16 @@ async function joinLobby(code) {
     const t0 = Date.now();
     while (!p.hostPresence() && Date.now() - t0 < 10000) await new Promise(r => setTimeout(r, 150));
     if (!p.hostPresence()) {
+      // Details that tell apart "host not reachable at all" from "lobby room problem".
+      const here = transport.lobby.peers().length;
+      const listed = transport.lobby.peers().some(x => x.presence && x.presence.lb && x.presence.lb.c === code);
+      const inRoom = p.peers().length;
+      const conn = transport.lobby.connected ? transport.lobby.connected() : true;
       p.leave(); party = null;
-      $('mpHint').textContent = transport.kind === 'local'
+      $('mpHint').textContent = (transport.kind === 'local'
         ? `No lobby with code ${code} answered. This browser can only reach lobbies open in other tabs on this device.`
-        : `No lobby with code ${code} answered. Check the code, and make sure the host still has the lobby open.`;
+        : `No lobby with code ${code} answered. Keep the host's game visible on screen (not in a background tab) and try again.`)
+        + ` [${conn ? 'online' : 'offline'} · ${here} here · lobby ${listed ? 'listed' : 'not listed'} · ${inRoom} in room]`;
       return;
     }
     p.hostSeenAt = Date.now();

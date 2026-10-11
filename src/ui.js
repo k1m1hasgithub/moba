@@ -352,7 +352,7 @@ function renderLobby() {
   seg.innerHTML = Object.entries(D.DIFFICULTY).map(([k, v]) => `<button type="button" data-d="${k}" aria-pressed="${k === L.diff}" ${p.isHost ? '' : 'disabled'}>${v.name} bots</button>`).join('');
   if (p.isHost) seg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { click(); p.setDiff(b.dataset.d); }));
   $('startMatch').hidden = !p.isHost;
-  $('lobbyHint').textContent = p.isHost ? 'Empty seats are filled with bots when the match starts.' : 'Waiting for the host to start the match.';
+  $('lobbyHint').textContent = p.isHost ? 'Keep this page visible while friends join. Empty seats are filled with bots.' : 'Waiting for the host to start the match.';
   const log = $('chatLog');
   const atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight - 4;
   log.innerHTML = '';
