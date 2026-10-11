@@ -28,7 +28,7 @@ Three transports share the same code (`src/net.js`), picked automatically:
 | Action | Keyboard + mouse | Touch |
 | --- | --- | --- |
 | Move | `WASD` / arrows, or right-click the ground | Joystick (left side) |
-| Attack | Hold `Space`, or click an enemy | Attack button |
+| Attack (a gold ring shows your range) | Hold `Space`, or click an enemy | Attack button |
 | Skills | Hold `Q` / `E` / `R` to aim at the cursor, release to cast | Drag a skill button to aim, tap to auto-aim |
 | Recall | `B` | Home button |
 | Regen | `H` | Plus button |

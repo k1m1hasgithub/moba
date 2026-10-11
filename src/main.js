@@ -317,7 +317,7 @@ function frame(now) {
         if (tour.target) LF.render.follow(tour.target, dt * 0.35);
         if (v.over) startDemo();
       }
-      LF.render.draw(v, dt, inGame() ? { aim: LF.input.aimState(), click: LF.input.click } : null);
+      LF.render.draw(v, dt, inGame() ? { aim: LF.input.aimState(), click: LF.input.click, attacking: LF.input.state.attackKey || LF.input.state.attackBtn } : null);
       if (inGame()) {
         if (frameN % 2 === 0) LF.render.drawMinimap(v);
         LF.ui.updateHud(v);

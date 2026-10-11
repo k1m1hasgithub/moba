@@ -290,6 +290,23 @@ function draw(view, dt, opts) {
     }
   }
 
+  // Basic attack range: shown while the attack key/button is held and briefly after each attack.
+  if (player && !player.dead) {
+    const held = !!(opts && opts.attacking);
+    const since = now - (anim(player).atkT ?? -9);
+    const k = held ? 1 : since < 0.6 ? 1 : since < 1.1 ? 1 - (since - 0.6) / 0.5 : 0;
+    if (k > 0) {
+      const R = (player.range || player.def.stats.range) + player.r;
+      ctx.save();
+      ctx.globalAlpha = k;
+      ctx.fillStyle = 'rgba(255,214,120,0.07)';
+      A.circle(ctx, player.x, player.y, R); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,214,120,0.75)'; ctx.lineWidth = 3;
+      ctx.setLineDash([14, 10]); ctx.lineDashOffset = -now * 30;
+      A.circle(ctx, player.x, player.y, R); ctx.stroke();
+      ctx.restore();
+    }
+  }
   // Aim indicator and target ring
   if (opts && opts.aim && player && !player.dead) drawAim(player, opts.aim);
   if (player && player.attackTarget && !player.attackTarget.dead) {
