@@ -89,7 +89,7 @@ function makeHero(s, seat) {
 }
 
 function emptyInput() {
-  return { mv: null, moveTo: null, attack: false, target: 0, casts: [], recall: false, shop: [], autoBuy: undefined };
+  return { mv: null, moveTo: null, attack: false, target: 0, casts: [], recall: false, shop: [], pin: undefined };
 }
 
 // Recompute item and level stats. Temporary buffs are applied every tick in applyBuffs.
@@ -178,7 +178,6 @@ function moveToward(u, tx, ty, dt, speed) {
   let dx = tx - u.x, dy = ty - u.y;
   const d = Math.hypot(dx, dy);
   if (d < 3) return true;
-  if (u.regenCh) u.regenCh = null;
   dx /= d; dy /= d;
   // Steer around rocks, trees and structures that sit on the straight line.
   const look = Math.min(d, 220);
@@ -884,7 +883,6 @@ function startRegen(h) {
   if (h.cds.rg > 0) return 'cooldown';
   if (h.hp >= h.maxHp) return 'full';
   h.regenCh = { t: 0 }; h.recall = null;
-  h.attackTarget = null; h.moveTo = null; h.input.moveTo = null;
   h.cds.rg = D.REGEN.cd;
   ev('fx', { vis: 'regen', x: h.x, y: h.y, team: h.team });
   return '';
@@ -1065,7 +1063,6 @@ function controlHuman(h, dt) {
   const mv = inp.mv;
   const moving = !!mv && Math.hypot(mv.x, mv.y) > 0.15 && h.rootT <= 0;
   if (moving && h.recall) h.recall = null;
-  if ((moving || inp.moveTo) && h.regenCh) h.regenCh = null;
   if (inp.target) {
     const t = G.units.find(u => u.id === inp.target);
     inp.target = 0;
@@ -1208,19 +1205,27 @@ function nextPurchase(h, target) {
 }
 function processShop(h) {
   const I = h.input;
-  if (I.autoBuy !== undefined) { h.autoBuy = !!I.autoBuy; I.autoBuy = undefined; }
+  if (I.pin !== undefined) { h.pin = D.ITEM[I.pin] ? I.pin : null; I.pin = undefined; }
   while (I.shop.length) {
     const op = I.shop.shift();
     if (op.op === 'buy') buyItem(h, op.id);
     else if (op.op === 'sell') sellItem(h, op.id);
   }
 }
+// Bots buy their build piece by piece. Players buy by hand, except for the one item they may pin:
+// it is bought the moment they can afford it.
 function autoBuy() {
   for (const h of G.heroes) {
-    if (!h.autoBuy) continue;
-    for (let n = 0; n < 4; n++) {
-      const next = nextPurchase(h);
-      if (!next || !buyItem(h, next.id)) break;
+    if (h.autoBuy) {
+      for (let n = 0; n < 4; n++) {
+        const next = nextPurchase(h);
+        if (!next || !buyItem(h, next.id)) break;
+      }
+    } else if (h.pin && !h.dead && !canBuy(h, h.pin)) {
+      const id = h.pin;
+      h.pin = null;
+      buyItem(h, id);
+      ev('pinbuy', { seat: h.seat, item: id });
     }
   }
 }

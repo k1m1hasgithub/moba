@@ -22,13 +22,9 @@ function think(h, G) {
     if (enemies.some(e => dist(e, h) < 650)) h.recall = null;
     else return;
   }
-  // Regen: stand still and heal while no enemy hero is close.
+  // Regen (works on the move) when hurt and no enemy hero is close.
   const safe = !enemies.some(e => dist(e, h) < 900) && G.t - h.lastCombat > 2;
-  if (h.regenCh) { if (safe) return; h.regenCh = null; }
-  if (safe && !atHome && hp < 0.6 && hp > 0.27 && h.cds.rg <= 0 && Math.random() < diff.react) {
-    h.moveTo = null; h.attackTarget = null;
-    if (!sim.cast(h, 'rg', h.x, h.y)) return;
-  }
+  if (!h.regenCh && safe && !atHome && hp < 0.6 && h.cds.rg <= 0 && Math.random() < diff.react) sim.cast(h, 'rg', h.x, h.y);
   if (ai.state === 'heal') {
     if (atHome && hp > 0.93 && h.mana > h.maxMana * 0.7) ai.state = null;
     else if (atHome) { h.moveTo = null; h.attackTarget = null; return; }

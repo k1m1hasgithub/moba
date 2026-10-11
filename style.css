@@ -364,6 +364,20 @@ body.touch .act kbd { display: none; }
 .recall-bar i { display: block; height: 6px; margin-top: 4px; border-radius: 3px; background: #0b131c; overflow: hidden; }
 .recall-bar i::after { content: ''; display: block; height: 100%; width: var(--p, 0%); background: linear-gradient(90deg, #4aa8ff, #cfe8ff); }
 .recall-bar.regen { color: #c8f5cf; }
+/* Buy prompt, top right */
+.buy-prompt { position: absolute; top: calc(58px + var(--safe-t)); right: calc(10px + var(--safe-r)); display: grid; gap: 6px; justify-items: end; pointer-events: none; }
+.bp-card, .bp-pin { pointer-events: auto; display: flex; align-items: center; gap: 8px; border: 1px solid var(--gold-deep); border-radius: 10px; background: rgba(12, 18, 26, 0.92); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45); }
+.bp-card { padding: 6px 6px 6px 6px; animation: bpIn 0.25s ease-out; }
+.bp-card img { width: 38px; height: 38px; border-radius: 7px; }
+.bp-card small { display: block; color: var(--muted); font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.bp-card strong { display: block; font-size: 13.5px; line-height: 1.15; max-width: 130px; }
+.bp-card .btn { white-space: nowrap; }
+.bp-pin { padding: 3px 4px 3px 4px; border-color: #5a3f8a; font-size: 12px; color: #e6dcff; }
+.bp-pin img { width: 24px; height: 24px; border-radius: 5px; }
+.bp-x { width: 24px; height: 24px; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 18px; line-height: 1; }
+.bp-x:hover { color: var(--ink); background: rgba(255, 255, 255, 0.08); }
+.btn.pinned { border-color: #b98cff; color: #e6dcff; }
+@keyframes bpIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
 /* Active passives and buffs, bottom middle */
 .status-bar { position: absolute; left: 50%; bottom: calc(14px + var(--safe-b)); transform: translateX(-50%); display: flex; gap: 5px; pointer-events: none; }
 .st { position: relative; width: 34px; height: 34px; border-radius: 7px; border: 1.5px solid var(--edge-hi); background: #0b131c; pointer-events: auto; outline: none; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); }
@@ -567,6 +581,8 @@ body.touch .toast { bottom: auto; top: calc(150px + var(--safe-t)); }
   body.touch .scorebar { margin-left: 0; }
   body.touch .hero-panel { top: auto; bottom: calc(6px + var(--safe-b)); left: 50%; transform: translateX(-50%); width: 230px; }
   body.touch .status-bar { bottom: calc(118px + var(--safe-b)); }
+  .buy-prompt { top: calc(52px + var(--safe-t)); }
+  .bp-card img { width: 30px; height: 30px; }
   .st { width: 28px; height: 28px; }
   body.touch .joy-zone { width: 38%; }
   .home-inner { gap: 14px; }

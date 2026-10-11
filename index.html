@@ -58,6 +58,7 @@
     </div>
     <div class="recall-bar" id="recallBar" hidden><span>Recalling</span><i></i></div>
     <div class="status-bar" id="statusBar" aria-label="Active passives and buffs"></div>
+    <div class="buy-prompt" id="buyPrompt"></div>
   </div>
 
   <!-- ============ Shop ============ -->
@@ -66,7 +67,6 @@
       <header class="sheet-head shop-head">
         <h2>Shop</h2>
         <span class="gold" id="shopGold">0</span>
-        <label class="toggle" for="autoBuy"><input type="checkbox" id="autoBuy"><span>Auto-buy my build</span></label>
         <button class="btn ghost" id="shopClose" type="button">Close <kbd>P</kbd></button>
       </header>
       <section class="rec">
@@ -91,7 +91,6 @@
       <header class="sheet-head shop-head">
         <img class="be-face" id="beFace" alt="">
         <h2 id="beTitle">Build</h2>
-        <label class="toggle" for="beAuto"><input type="checkbox" id="beAuto"><span>Auto-buy my build in matches</span></label>
         <button class="btn ghost" id="beClose" type="button">Done</button>
       </header>
       <section class="rec be-build">
@@ -252,13 +251,13 @@
           <dt>Attack</dt><dd><kbd>Space</kbd> (hold) or click an enemy. Heroes are targeted first.</dd>
           <dt>Skills</dt><dd><kbd>Q</kbd> <kbd>E</kbd> and <kbd>R</kbd> (ultimate, level 4). Hold to aim at the cursor, release to cast. On touch, drag a skill button to aim, or tap it to auto-aim.</dd>
           <dt>Recall</dt><dd><kbd>B</kbd> teleports you to base after 3.5 seconds.</dd>
-          <dt>Regen</dt><dd><kbd>H</kbd> restores 35% of your health over 5 seconds while you stand still. Every hero has it (25s cooldown).</dd>
+          <dt>Regen</dt><dd><kbd>H</kbd> restores 35% of your health over 5 seconds, even while you walk. Attacking, casting or taking damage from heroes and towers stops it. Every hero has it (25s cooldown).</dd>
           <dt>Battle spell</dt><dd><kbd>F</kbd> casts the special ability you picked before the match: Blink, Smite, Reap, Cleanse, Sprint, Aegis or Stonegaze.</dd>
           <dt>Scoreboard</dt><dd><kbd>Tab</kbd></dd>
         </dl>
         <h3 class="mt">Tips</h3>
         <ul class="tips">
-          <li>Landing the final hit on a minion gives you its gold. Press <kbd>P</kbd> to shop, or turn on auto-buy there.</li>
+          <li>Landing the final hit on a minion gives you its gold. Press <kbd>P</kbd> to shop, or confirm the suggested item in the top-right corner.</li>
           <li>Towers hit minions first, but switch to you if you attack an enemy hero nearby.</li>
           <li>Junglers: the Azure Wisp speeds up your skills, the Ember Brute makes your attacks burn.</li>
           <li>The Tidewarden (2:00) pays the whole team. The Lord (8:00) makes your whole team hit harder.</li>

@@ -474,7 +474,7 @@ function setupHud(view) {
     el.querySelector('img').src = spellIcon(sp.id);
     el.title = `${sp.name} (battle spell, F): ${sp.desc}`;
     el.setAttribute('aria-label', 'Battle spell: ' + sp.name);
-    $('btnRegen').title = `Regen (H): stand still to restore ${Math.round(D.REGEN.heal * D.REGEN.time * 100)}% of your health over ${D.REGEN.time} seconds. Moving, attacking or taking damage from heroes and towers stops it.`;
+    $('btnRegen').title = `Regen (H): restore ${Math.round(D.REGEN.heal * D.REGEN.time * 100)}% of your health over ${D.REGEN.time} seconds. You can keep moving; attacking, casting or taking damage from heroes and towers stops it.`;
   }
   $('heroPanel').hidden = !h;
   $('actions').hidden = !h;
@@ -557,6 +557,7 @@ function updateHud(view) {
     if (ch) setVar(rb, '--p', Math.min(100, ch === 'recall' ? h.recall.t / 3.5 * 100 : h.regenCh.t / D.REGEN.time * 100).toFixed(0) + '%');
   }
   updateStatus(view, h);
+  updateBuyPrompt(h);
   consumeEvents(view);
   if (hud.bannerQ.length && performance.now() > hud.bannerT) playBanner(hud.bannerQ.shift());
   if (hud.toastT && performance.now() > hud.toastT) { $('toast').hidden = true; hud.toastT = 0; }
@@ -590,7 +591,8 @@ function consumeEvents(view) {
     } else if (e.type === 'ace') {
       const ally = me ? e.team === me.team : e.team === 0;
       hud.bannerQ.push({ title: ally ? 'Ace!' : 'Team wiped', cls: ally ? 'good' : 'bad' });
-    } else if ((e.type === 'buy' || e.type === 'sell') && me && e.seat === me.seat) {
+    } else if ((e.type === 'buy' || e.type === 'sell' || e.type === 'pinbuy') && me && e.seat === me.seat) {
+      if (e.type === 'pinbuy' && LF.input.state.pin === e.item) LF.input.state.pin = null;
       toast(e.item, e.type);
     }
   }
@@ -639,7 +641,7 @@ function toast(itemId, type) {
   const el = $('toast');
   el.innerHTML = type === 'sell'
     ? `<img src="${itemIcon(itemId)}" alt=""><span>Sold <b>${esc(it.name)}</b> for ${Math.round(it.cost * LF.sim.SELL_RATE)}</span>`
-    : `<img src="${itemIcon(itemId)}" alt=""><span>${it.tier === 3 ? 'Bought' : 'Crafted'} <b>${esc(it.name)}</b></span>`;
+    : `<img src="${itemIcon(itemId)}" alt=""><span>${type === 'pinbuy' ? 'Auto-bought' : it.tier === 3 ? 'Bought' : 'Crafted'} <b>${esc(it.name)}</b></span>`;
   el.hidden = false;
   hud.toastT = performance.now() + 2200;
   LF.audio.play('gold', 0.5);
@@ -825,7 +827,6 @@ function initShop() {
     pick(e);
   });
   $('buyNext').addEventListener('click', () => { const h = shopHero(); const n = h && LF.sim.nextPurchase(h); if (n) order('buy', n.id); });
-  $('autoBuy').addEventListener('change', e => { LF.input.setAutoBuy(e.target.checked); renderShop(true); });
   $('editBuild').addEventListener('click', () => { const h = shopHero(); if (h) { click(); openBuild(h.def.id); } });
   $('shopClose').addEventListener('click', () => toggleShop(false));
   $('btnShop').addEventListener('click', () => toggleShop());
@@ -835,8 +836,10 @@ function initShop() {
     if (h && id && !LF.sim.canBuy(h, id)) order('buy', id); else toggleShop(true);
   });
   initBuild();
+  initBuyPrompt();
 }
 function order(op, id) {
+  if (op === 'pin') { click(); LF.input.setPin(LF.input.state.pin === id ? null : id); renderShop(true); return; }
   if (performance.now() < shopSt.busy) return;
   shopSt.busy = performance.now() + 350;
   LF.input.shop(op, id);
@@ -858,14 +861,13 @@ function renderShop(force) {
   const build = h.build || h.def.build;
   const custom = !!LF.input.state.build;
   if (!shopSt.sel || !D.ITEM[shopSt.sel]) shopSt.sel = next || D.ITEMS[0].id;
-  const sig = [Math.floor(h.gold), h.items.join(), build.join(), shopSt.cat, shopSt.tier, shopSt.sel, LF.input.state.autoBuy].join('|');
+  const sig = [Math.floor(h.gold), h.items.join(), build.join(), shopSt.cat, shopSt.tier, shopSt.sel, LF.input.state.pin].join('|');
   if (!force && sig === shopSt.sig) return;
   shopSt.sig = sig;
   $('shopGold').textContent = Math.floor(h.gold);
-  $('autoBuy').checked = !!LF.input.state.autoBuy;
   $('recLabel').textContent = custom ? 'Your build for ' : 'Recommended for ';
   $('recHero').textContent = h.def.name;
-  $('recNote').textContent = custom ? 'Your own build. Auto-buy and "Buy next" follow it, piece by piece.' : h.def.buildNote;
+  $('recNote').textContent = custom ? 'Your own build. "Buy next" and the buy prompt follow it, piece by piece.' : h.def.buildNote;
   const left = h.items.slice();
   $('recItems').innerHTML = buildRowHtml(build, shopSt.sel, id => {
     const k = left.indexOf(id), owned = k >= 0;
@@ -892,11 +894,13 @@ function renderShop(force) {
   const plan = LF.sim.purchasePlan(h.items, it.id);
   const owned = h.items.includes(it.id);
   const short = why === 'gold' ? `Need ${plan.cost - Math.floor(h.gold)} more gold.` : WHY_BUY[why] || '';
+  const pin = LF.input.state.pin;
   $('shopDetail').innerHTML = itemInfoHtml(it, h.items, shopSt.sel) + `
     ${build.includes(it.id) ? `<p class="sd-rec">Part of ${custom ? 'your' : esc(h.def.name) + '\'s recommended'} build.</p>` : ''}
     <div class="sd-actions"><button class="btn primary" type="button" data-op="buy" data-item="${it.id}" ${why ? 'disabled' : ''}>${it.tier === 3 ? 'Buy' : 'Craft'} · ${plan.cost}</button>
     ${plan.used.length ? `<span class="sd-save">Your ${plan.used.map(u => esc(D.ITEM[u].name)).join(', ')} take ${plan.credit} off (full price ${it.cost})</span>` : ''}
     ${owned ? `<button class="btn" type="button" data-op="sell" data-item="${it.id}">Sell · ${Math.round(it.cost * LF.sim.SELL_RATE)}</button>` : ''}
+    ${why === 'gold' || pin === it.id ? `<button class="btn${pin === it.id ? ' pinned' : ''}" type="button" data-op="pin" data-item="${it.id}" title="Buy this item automatically as soon as you have enough gold. Only one item at a time.">${pin === it.id ? '✓ Auto-buying · cancel' : 'Auto-buy when affordable'}</button>` : ''}
     ${short ? `<span class="sd-why">${esc(short)}</span>` : ''}</div>`;
   if (fresh) $('shopDetail').scrollTop = 0;
   $('shopBag').innerHTML = Array.from({ length: 6 }, (_, i) => {
@@ -906,7 +910,44 @@ function renderShop(force) {
 }
 
 // ---------------------------------------------------------------------------
-// Build editor: browse every item and plan up to six for a hero. Saved per hero; auto-buy and the
+// Buy prompt (top right): the next affordable piece of your build waits for a click to confirm.
+// Below it, the one item you pinned to auto-buy, if any.
+// ---------------------------------------------------------------------------
+const bp = { card: '', pin: '', dismissed: '' };
+function initBuyPrompt() {
+  $('buyPrompt').addEventListener('click', e => {
+    const b = e.target.closest('[data-bp]');
+    if (!b) return;
+    if (b.dataset.bp === 'buy') order('buy', b.dataset.item);
+    else if (b.dataset.bp === 'later') { click(); bp.dismissed = b.dataset.item; }
+    else if (b.dataset.bp === 'unpin') { click(); LF.input.setPin(null); renderShop(true); }
+  });
+}
+function updateBuyPrompt(h) {
+  let card = '', pinRow = '';
+  if (h && !h.dead) {
+    const np = LF.sim.nextPurchase(h);
+    if (np && np.id !== bp.dismissed) {
+      const it = D.ITEM[np.id], c = LF.sim.purchasePlan(h.items, np.id).cost;
+      card = `<div class="bp-card"><img src="${itemIcon(np.id)}" alt=""><div><small>${np.id === np.target ? 'Ready to buy' : 'For ' + esc(D.ITEM[np.target].name)}</small><strong>${esc(it.name)}</strong></div>
+        <button class="btn primary small" type="button" data-bp="buy" data-item="${np.id}">Buy · ${c}</button><button class="bp-x" type="button" data-bp="later" data-item="${np.id}" aria-label="Not now">×</button></div>`;
+    }
+    if (!np) bp.dismissed = '';
+    const pin = LF.input.state.pin;
+    if (pin) {
+      const it = D.ITEM[pin], why = LF.sim.canBuy(h, pin), c = LF.sim.purchasePlan(h.items, pin).cost;
+      const note = why === 'gold' ? `${Math.max(0, c - Math.floor(h.gold))} more gold` : why === 'full' ? 'Slots full' : why === 'boots' ? 'Already has boots' : 'Buying…';
+      pinRow = `<div class="bp-pin"><img src="${itemIcon(pin)}" alt=""><span>Auto-buy <b>${esc(it.name)}</b> · ${note}</span><button class="bp-x" type="button" data-bp="unpin" aria-label="Cancel auto-buy">×</button></div>`;
+    }
+  }
+  const el = $('buyPrompt');
+  if (!el.firstChild) el.innerHTML = '<div id="bpCard"></div><div id="bpPin"></div>';
+  if (card !== bp.card) { bp.card = card; $('bpCard').innerHTML = card; }
+  if (pinRow !== bp.pin) { bp.pin = pinRow; $('bpPin').innerHTML = pinRow; }
+}
+
+// ---------------------------------------------------------------------------
+// Build editor: browse every item and plan up to six for a hero. Saved per hero; the buy prompt and the
 // quick-buy button follow it in matches.
 // ---------------------------------------------------------------------------
 const be = { hero: null, build: [], custom: false, cat: 'All', tier: 'all', sel: null, slot: -1 };
@@ -934,7 +975,6 @@ function initBuild() {
   });
   $('beReset').addEventListener('click', () => { click(); be.slot = -1; saveBuild(null); });
   $('beClear').addEventListener('click', () => { click(); be.slot = -1; saveBuild([]); });
-  $('beAuto').addEventListener('change', e => { LF.input.setAutoBuy(e.target.checked); renderShop(true); });
   $('beClose').addEventListener('click', () => { click(); closeBuild(); });
   $('buildEd').addEventListener('pointerdown', e => { if (e.target.id === 'buildEd') closeBuild(); });
 }
@@ -971,11 +1011,10 @@ function renderBuild() {
   const hd = D.HERO[be.hero];
   $('beFace').src = A.portrait(hd.id, 48);
   $('beTitle').textContent = `${hd.name}'s build`;
-  $('beAuto').checked = !!LF.input.state.autoBuy;
   const total = be.build.reduce((s, id) => s + D.ITEM[id].cost, 0);
   $('beHead').textContent = be.custom ? (be.build.length ? `Your build · ${total} gold` : 'Your build is empty') : `Recommended build · ${total} gold`;
   $('beNote').textContent = be.custom
-    ? (be.build.length ? 'Auto-buy and "Buy next" buy these in order, piece by piece. Saved in this browser.' : 'Add items from the list. An empty build falls back to the recommended one.')
+    ? (be.build.length ? 'In matches, the buy prompt and "Buy next" suggest these in order, piece by piece. Saved in this browser.' : 'Add items from the list. An empty build falls back to the recommended one.')
     : `${hd.buildNote} Add, remove or reorder items to make it your own.`;
   if (be.slot >= be.build.length) be.slot = -1;
   $('beSlots').innerHTML = buildRowHtml(be.build, null, (id, i) => (i === be.slot ? ' picked' : '')) +
@@ -1000,7 +1039,7 @@ function renderBuild() {
 function buildBlockHtml(heroId) {
   const own = builds.get(heroId), list = own || D.HERO[heroId].build;
   return `<p class="eyebrow">${own ? 'Your build' : 'Recommended build'}</p><div class="itemrow">${list.map(i => `<img src="${itemIcon(i)}" alt="${esc(D.ITEM[i].name)}" title="${esc(D.ITEM[i].name)}: ${esc(D.ITEM[i].text)}">`).join('')}</div>
-    <p>${own ? 'Auto-buy follows your build in matches.' : esc(D.HERO[heroId].buildNote)}</p>
+    <p>${own ? 'The buy prompt follows your build in matches.' : esc(D.HERO[heroId].buildNote)}</p>
     <button class="btn small" type="button" data-edit-build="${heroId}">${own ? 'Edit build' : 'Customize build'} · all items</button>`;
 }
 function renderLobbyBuild() {

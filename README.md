@@ -40,8 +40,8 @@ Three transports share the same code (`src/net.js`), picked automatically:
 The ultimate unlocks at level 4.
 
 **Regen and battle spells**: every hero has Recall and **Regen**, which restores 35% of your health over
-5 seconds while you stand still (moving, attacking, casting or taking damage from heroes and towers stops
-it; 25 second cooldown). Before the match you also pick one **battle spell** per hero on the hero select
+5 seconds, even while you walk (attacking, casting or taking damage from heroes and towers stops it; 25
+second cooldown). Before the match you also pick one **battle spell** per hero on the hero select
 screen or in the lobby:
 
 | Spell | Cooldown | Effect |
@@ -65,12 +65,13 @@ buying piece by piece costs a little more than saving up. A Tier 3 piece crafted
 gone; from then on only the Tier 2 item counts toward the Tier 1 price. Many components feed more than one
 Tier 1 item (a Longsword goes into five of them), but each craft consumes its parts, so you buy them again
 for the next item. Unique attributes and passives count once even if you own two copies.
-Each hero has a recommended build; the "Next" line on your hero panel buys the next piece toward it in one
-click, or turn on auto-buy in the shop.
+Each hero has a recommended build. When you can afford its next piece, a buy prompt appears in the
+top-right corner: click **Buy** to confirm (nothing is bought without your click). You can also pin **one**
+item in the shop ("Auto-buy when affordable"); it is bought automatically the moment you have the gold.
 
 **Your own builds**: on the hero select screen, in a lobby or from the in-game shop, "Customize build"
 opens the full item list. Pick up to six items in the order you want them (one pair of boots); the build is
-saved per hero in your browser, and auto-buy and the quick-buy button follow it instead of the recommended
+saved per hero in your browser, and the buy prompt and quick-buy button follow it instead of the recommended
 one. It works in multiplayer too: your build travels to the host with your inputs.
 
 ## Heroes
