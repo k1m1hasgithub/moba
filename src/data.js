@@ -455,6 +455,24 @@ const HERO = Object.fromEntries(HEROES.map(h => [h.id, h]));
 const HERO_INDEX = Object.fromEntries(HEROES.map((h, i) => [h.id, i]));
 for (const h of HEROES) h.skill = Object.fromEntries(h.skills.map(s => [s.key, s]));
 
+// ---------------------------------------------------------------------------
+// Battle spells: one per player, picked before the match. `aim` spells are aimed like skills.
+// ---------------------------------------------------------------------------
+const SPELLS = [
+  { id: 'blink', name: 'Blink', cd: 100, aim: { type: 'blink', range: 300 }, desc: 'Teleport a short distance in any direction. Escape a gank or close the gap for a kill.' },
+  { id: 'smite', name: 'Smite', cd: 35, desc: 'Strike the nearest monster or minion for 450 + 40 per level true damage. The jungler\'s favorite: secure camps, Tidewarden and the Lord.' },
+  { id: 'reap', name: 'Reap', cd: 90, desc: 'Strike the nearest enemy hero within 450 for 120 + 12 per level + 15% of their missing health as true damage. Finish off runners.' },
+  { id: 'cleanse', name: 'Cleanse', cd: 90, desc: 'Break free of stuns, roots and slows, become immune to them for 1.2 seconds and gain 20% move speed. Works while stunned.' },
+  { id: 'sprint', name: 'Sprint', cd: 90, desc: 'Gain 45% move speed for 5 seconds. Chase, escape or rotate faster.' },
+  { id: 'aegis', name: 'Aegis', cd: 90, desc: 'Shield yourself and the most hurt ally nearby for 300 + 40 per level damage for 3 seconds.' },
+  { id: 'stonegaze', name: 'Stonegaze', cd: 90, desc: 'Turn nearby enemies to stone: stuns everything within 240 for 0.8 seconds and deals 80 + 12 per level damage.' },
+];
+const SPELL = Object.fromEntries(SPELLS.map(s => [s.id, s]));
+const SPELL_INDEX = Object.fromEntries(SPELLS.map((s, i) => [s.id, i]));
+// What bots (and new players) take for each role.
+const ROLE_SPELL = { exp: 'reap', jungle: 'smite', mid: 'blink', gold: 'blink', roam: 'aegis' };
+const REGEN = { cd: 25, time: 5, heal: 0.07 }; // channel up to 5 s, 7% max health per second
+
 const MINION = {
   melee: { hp: 520, ad: 26, range: 40, as: 0.9, ms: 185, r: 18, gold: 28, xp: 40, armor: 8 },
   caster: { hp: 360, ad: 34, range: 260, as: 0.75, ms: 185, r: 16, gold: 22, xp: 32, armor: 0, proj: 'minion', speed: 750 },
@@ -473,6 +491,6 @@ const DIFFICULTY = {
 LF.data = {
   W, H, MAP, BLUE, RED, NEUTRAL, TAU, TEAMS, mirror, LANES, LANE_IDS, laneAt, laneProject,
   FOUNTAIN, CORE_POS, STRUCTS, STRUCT_STATS, MONSTERS, CAMPS, OBSTACLES, BUSHES, bushAt, ROLES, ROLE_INDEX,
-  ITEMS, ITEM, ITEM_INDEX, STAT_LABEL, HEROES, HERO, HERO_INDEX, MINION, ULT_LEVEL, MAX_LEVEL, xpToNext, DIFFICULTY, mulberry32,
+  ITEMS, ITEM, ITEM_INDEX, STAT_LABEL, SPELLS, SPELL, SPELL_INDEX, ROLE_SPELL, REGEN, HEROES, HERO, HERO_INDEX, MINION, ULT_LEVEL, MAX_LEVEL, xpToNext, DIFFICULTY, mulberry32,
 };
 })(window.LF);

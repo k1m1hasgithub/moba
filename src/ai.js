@@ -22,6 +22,13 @@ function think(h, G) {
     if (enemies.some(e => dist(e, h) < 650)) h.recall = null;
     else return;
   }
+  // Regen: stand still and heal while no enemy hero is close.
+  const safe = !enemies.some(e => dist(e, h) < 900) && G.t - h.lastCombat > 2;
+  if (h.regenCh) { if (safe) return; h.regenCh = null; }
+  if (safe && !atHome && hp < 0.6 && hp > 0.27 && h.cds.rg <= 0 && Math.random() < diff.react) {
+    h.moveTo = null; h.attackTarget = null;
+    if (!sim.cast(h, 'rg', h.x, h.y)) return;
+  }
   if (ai.state === 'heal') {
     if (atHome && hp > 0.93 && h.mana > h.maxMana * 0.7) ai.state = null;
     else if (atHome) { h.moveTo = null; h.attackTarget = null; return; }
@@ -50,6 +57,7 @@ function think(h, G) {
       if (engage) {
         ai.mode = 'fight';
         h.attackTarget = target; h.moveTo = null;
+        useSpell(h, G, 'fight', target, diff);
         useSkills(h, G, 'fight', target, diff);
         return;
       }
@@ -57,6 +65,7 @@ function think(h, G) {
     const closest = foes.reduce((a, b) => (dist(a, h) < dist(b, h) ? a : b));
     if (dist(closest, h) < 600 && mine < theirs * 0.85) {
       ai.mode = 'flee';
+      useSpell(h, G, 'flee', closest, diff);
       useSkills(h, G, 'flee', closest, diff);
       const a = Math.atan2(h.y - closest.y, h.x - closest.x);
       const toHome = Math.atan2(home.y - h.y, home.x - h.x);
@@ -124,7 +133,7 @@ function retreat(h, G, enemies, diff) {
     LF.sim.startRecall(h);
     return;
   }
-  if (threat && dist(threat, h) < 520) useSkills(h, G, 'flee', threat, diff);
+  if (threat && dist(threat, h) < 520) { useSpell(h, G, 'flee', threat, diff); useSkills(h, G, 'flee', threat, diff); }
   goTo(h, home.x, home.y);
 }
 
@@ -189,6 +198,39 @@ function useSkills(h, G, mode, target, diff) {
     }
     if (cast) { sim.cast(h, key, cast.x, cast.y); return; }
   }
+}
+
+// Battle spell decisions.
+function useSpell(h, G, mode, target, diff) {
+  if (h.cds.sp > 0 || !target || Math.random() > diff.react) return;
+  const sim = LF.sim, d = dist(h, target), hp = h.hp / h.maxHp, L = h.level;
+  const isHero = target.kind === 'hero', tPct = target.hp / target.maxHp;
+  let at = null;
+  switch (h.spell) {
+    case 'blink':
+      if (mode === 'flee' && hp < 0.35 && d < 420) at = awayPoint(h, target);
+      else if (mode === 'fight' && isHero && tPct < 0.2 && d > h.range + 80 && d < h.range + 320) at = { x: target.x, y: target.y };
+      break;
+    case 'smite':
+      if (target.kind === 'monster' && target.hp < 450 + 40 * L && sim.gap(h, target) < 300) at = { x: target.x, y: target.y };
+      break;
+    case 'reap':
+      if (isHero && d < 450 && target.hp < 120 + 12 * L + 0.15 * (target.maxHp - target.hp)) at = { x: target.x, y: target.y };
+      break;
+    case 'sprint':
+      if ((mode === 'flee' && d < 500) || (mode === 'fight' && isHero && tPct < 0.3 && d > h.range + 150)) at = { x: h.x, y: h.y };
+      break;
+    case 'aegis': {
+      const ally = G.heroes.some(a => a !== h && !a.dead && a.team === h.team && dist(a, h) < 550 && a.hp / a.maxHp < 0.3);
+      if (isHero && d < 700 && (hp < 0.35 || (mode === 'fight' && ally))) at = { x: h.x, y: h.y };
+      break;
+    }
+    case 'stonegaze':
+      if (mode !== 'farm' && isHero && d < 220) at = { x: h.x, y: h.y };
+      break;
+    default: break;
+  }
+  if (at) sim.cast(h, 'sp', at.x, at.y);
 }
 
 function awayPoint(h, from) {
@@ -292,7 +334,7 @@ function jungle(h, G, enemies, diff) {
   }
   if (camp) {
     if (dist(h, camp) > 380) goTo(h, camp.home.x, camp.home.y);
-    else { h.attackTarget = camp; h.moveTo = null; useSkills(h, G, 'farm', camp, diff); }
+    else { h.attackTarget = camp; h.moveTo = null; useSpell(h, G, 'farm', camp, diff); useSkills(h, G, 'farm', camp, diff); }
     return true;
   }
   if (bossCheck(h, G, enemies, diff)) return true;

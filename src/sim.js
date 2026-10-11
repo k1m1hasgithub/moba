@@ -74,9 +74,10 @@ function makeHero(s, seat) {
   const a = (team === BLUE ? -Math.PI / 4 : Math.PI * 3 / 4) + (role - 2) * 0.35;
   const h = unit({
     kind: 'hero', seat, team, role, def, human: !!s.human, local: !!s.local, peer: s.peer || null, autoBuy: !s.human, build: cleanBuild(s.build) || def.build,
+    spell: D.SPELL[s.spell] ? s.spell : D.ROLE_SPELL[def.role], regenCh: null, ccImmuneT: 0,
     name: s.name || def.name, diff: s.diff || 'normal',
     x: f.x + Math.cos(a) * 110, y: f.y + Math.sin(a) * 110, r: 26, facing: a,
-    level: 1, xp: 0, gold: 300, goldTotal: 300, items: [], cds: { s1: 0, s2: 0, ult: 0 },
+    level: 1, xp: 0, gold: 300, goldTotal: 300, items: [], cds: { s1: 0, s2: 0, ult: 0, sp: 0, rg: 0 },
     respawn: 0, k: 0, d: 0, a: 0, cs: 0, streak: 0, multiN: 0, multiT: -99, assist: {},
     buffs: [], mana: 0, maxMana: 0, ap: 0, input: emptyInput(), ai: { next: Math.random() * 0.3 },
     moveTo: null, attackTarget: null, recall: null, dash: null, leap: null, air: 0,
@@ -177,6 +178,7 @@ function moveToward(u, tx, ty, dt, speed) {
   let dx = tx - u.x, dy = ty - u.y;
   const d = Math.hypot(dx, dy);
   if (d < 3) return true;
+  if (u.regenCh) u.regenCh = null;
   dx /= d; dy /= d;
   // Steer around rocks, trees and structures that sit on the straight line.
   const look = Math.min(d, 220);
@@ -304,7 +306,7 @@ function damage(src, tgt, raw, o) {
       if (tgt.ip.frostbite) applyCC(src, { slow: 0.2, dur: 1 });
     }
   }
-  if (tgt.kind === 'hero') { tgt.recall = null; if (src) tgt.lastCombat = G.t; }
+  if (tgt.kind === 'hero') { tgt.recall = null; if (src) tgt.lastCombat = G.t; if (src && (src.kind === 'hero' || isStructure(src))) tgt.regenCh = null; }
   if (tgt.kind === 'monster' && !tgt.resetting && src && (src.kind === 'hero' || src.kind === 'minion')) {
     if (!tgt.target || tgt.target.dead || (src.kind === 'hero' && tgt.target.kind !== 'hero')) tgt.target = src;
   }
@@ -324,7 +326,7 @@ function callForHelp(victim, attacker) {
 }
 
 function applyCC(u, cc) {
-  if (!cc || u.dead || isStructure(u)) return;
+  if (!cc || u.dead || isStructure(u) || u.ccImmuneT > G.t) return;
   if (u.boss) { if (cc.slow) { u.slowP = Math.max(u.slowP, cc.slow * 0.5); u.slowT = Math.max(u.slowT, cc.dur || 1); } return; }
   if (u.tenacity > 0) {
     const k = 1 - u.tenacity;
@@ -332,7 +334,7 @@ function applyCC(u, cc) {
   }
   if (cc.stun) {
     u.stunT = Math.max(u.stunT, cc.stun);
-    if (u.kind === 'hero') { u.recall = null; u.dash = null; }
+    if (u.kind === 'hero') { u.recall = null; u.dash = null; u.regenCh = null; }
   }
   if (cc.root) { u.rootT = Math.max(u.rootT, cc.root); if (u.kind === 'hero') u.recall = null; }
   if (cc.slow) {
@@ -446,7 +448,7 @@ function heroAttack(h, t) {
   if (h.atkCd > 0) return;
   h.atkCd = 1 / h.as;
   h.atkN = (h.atkN + 1) % 1000; h.atkT = G.t;
-  h.recall = null;
+  h.recall = null; h.regenCh = null;
   let mult = 1;
   const fx = {};
   const p = h.def.passive.id;
@@ -526,6 +528,8 @@ function skillHit(h, tgt, sk, mult) {
 const healPower = h => 1 + (h.healing || 0);
 
 function cast(h, key, ax, ay) {
+  if (key === 'sp') return castSpell(h, ax, ay);
+  if (key === 'rg') return startRegen(h);
   const sk = h.def.skill[key];
   if (!sk) return 'none';
   if (h.dead) return 'dead';
@@ -617,7 +621,7 @@ function cast(h, key, ax, ay) {
   h.mana -= sk.mana;
   h.castN = (h.castN + 1) % 1000; h.castKey = key; h.castT = G.t;
   h.facing = ang;
-  h.recall = null;
+  h.recall = null; h.regenCh = null;
   if (h.def.passive.id === 'riposte') h.riposte = true;
   if (h.ip.fury) {
     h.furyN = hasBuff(h, 'fury') ? Math.min(3, h.furyN + 1) : 1;
@@ -866,9 +870,101 @@ function respawnHero(h) {
 
 function startRecall(h) {
   if (h.dead || h.recall || h.dash || h.leap) return;
-  h.recall = { t: 0 };
+  h.recall = { t: 0 }; h.regenCh = null;
   h.attackTarget = null; h.moveTo = null; h.input.moveTo = null;
   ev('recall', { seat: h.seat });
+}
+
+// ---------------------------------------------------------------------------
+// Regen and battle spells (every hero has Regen; the battle spell is picked before the match)
+// ---------------------------------------------------------------------------
+function startRegen(h) {
+  if (h.dead) return 'dead';
+  if (h.stunT > 0 || h.dash || h.leap) return 'busy';
+  if (h.cds.rg > 0) return 'cooldown';
+  if (h.hp >= h.maxHp) return 'full';
+  h.regenCh = { t: 0 }; h.recall = null;
+  h.attackTarget = null; h.moveTo = null; h.input.moveTo = null;
+  h.cds.rg = D.REGEN.cd;
+  ev('fx', { vis: 'regen', x: h.x, y: h.y, team: h.team });
+  return '';
+}
+function castSpell(h, ax, ay) {
+  const sp = D.SPELL[h.spell];
+  if (!sp) return 'none';
+  if (h.dead) return 'dead';
+  if (h.cds.sp > 0) return 'cooldown';
+  if (sp.id !== 'cleanse' && (h.stunT > 0 || h.leap || h.dash)) return 'busy';
+  const L = h.level;
+  switch (sp.id) {
+    case 'blink': {
+      if (h.rootT > 0) return 'rooted';
+      let a = Math.atan2(ay - h.y, ax - h.x);
+      if (!isFinite(a) || Math.hypot(ax - h.x, ay - h.y) < 1) a = h.facing;
+      const r = Math.min(sp.aim.range, Math.max(120, Math.hypot(ax - h.x, ay - h.y)));
+      const x = clamp(h.x + Math.cos(a) * r, 40, W - 40), y = clamp(h.y + Math.sin(a) * r, 40, H - 40);
+      ev('fx', { vis: 'blink', x: h.x, y: h.y, x2: x, y2: y, team: h.team });
+      h.x = x; h.y = y; h.facing = a;
+      pushOut(h);
+      break;
+    }
+    case 'smite': {
+      let best = null, bd = Infinity;
+      for (const u of G.units) {
+        if (u.dead || u.team === h.team || (u.kind !== 'monster' && u.kind !== 'minion') || gap(h, u) > 320) continue;
+        const d = Math.hypot(u.x - ax, u.y - ay) - (u.kind === 'monster' ? 200 : 0);
+        if (d < bd) { bd = d; best = u; }
+      }
+      if (!best) return 'notarget';
+      ev('fx', { vis: 'smite', x: best.x, y: best.y, team: h.team });
+      damage(h, best, 450 + 40 * L, { trueDmg: true });
+      break;
+    }
+    case 'reap': {
+      let best = null, bd = Infinity;
+      for (const u of G.heroes) {
+        if (u.dead || u.team === h.team || !seen(h.team, u) || dist(h, u) > 450 + u.r) continue;
+        const d = Math.hypot(u.x - ax, u.y - ay);
+        if (d < bd) { bd = d; best = u; }
+      }
+      if (!best) return 'notarget';
+      ev('fx', { vis: 'reap', x: best.x, y: best.y, team: h.team });
+      damage(h, best, 120 + 12 * L + 0.15 * (best.maxHp - best.hp), { trueDmg: true });
+      break;
+    }
+    case 'cleanse':
+      h.stunT = 0; h.rootT = 0; h.slowT = 0; h.slowP = 0;
+      h.ccImmuneT = G.t + 1.2;
+      addBuff(h, { ms: 0.2, dur: 1.2 }, 'cleanse');
+      ev('fx', { vis: 'cleanse', x: h.x, y: h.y, team: h.team });
+      break;
+    case 'sprint':
+      addBuff(h, { ms: 0.45, dur: 5 }, 'sprint');
+      ev('fx', { vis: 'sprint', x: h.x, y: h.y, team: h.team });
+      break;
+    case 'aegis': {
+      const amt = 300 + 40 * L;
+      giveShield(h, amt, 3);
+      const ally = G.heroes.filter(a => a !== h && !a.dead && a.team === h.team && dist(a, h) < 550).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+      if (ally) { giveShield(ally, amt, 3); ev('fx', { vis: 'aegis', x: ally.x, y: ally.y, team: h.team }); }
+      ev('fx', { vis: 'aegis', x: h.x, y: h.y, team: h.team });
+      break;
+    }
+    case 'stonegaze':
+      for (const u of enemyUnitsNear(h, h.x, h.y, 240)) {
+        if (isStructure(u)) continue;
+        damage(h, u, 80 + 12 * L, { skill: true });
+        if (!u.dead) applyCC(u, { stun: 0.8 });
+      }
+      ev('fx', { vis: 'gaze', x: h.x, y: h.y, r: 240, team: h.team });
+      break;
+    default: return 'none';
+  }
+  h.cds.sp = sp.cd;
+  h.recall = null; h.regenCh = null;
+  h.castN = (h.castN + 1) % 1000; h.castKey = 'sp'; h.castT = G.t;
+  ev('cast', { seat: h.seat, key: 'sp' });
+  return '';
 }
 
 // ---------------------------------------------------------------------------
@@ -911,7 +1007,12 @@ function updateHero(h, dt) {
     if (h.respawn <= 0) respawnHero(h);
     return;
   }
-  for (const k of ['s1', 's2', 'ult']) h.cds[k] = Math.max(0, h.cds[k] - dt);
+  for (const k of ['s1', 's2', 'ult', 'sp', 'rg']) h.cds[k] = Math.max(0, h.cds[k] - dt);
+  if (h.regenCh) {
+    h.regenCh.t += dt;
+    heal(h, h.maxHp * D.REGEN.heal * dt);
+    if (h.regenCh.t >= D.REGEN.time || h.hp >= h.maxHp) h.regenCh = null;
+  }
   if (h.shieldT > 0) { h.shieldT -= dt; if (h.shieldT <= 0) h.shield = 0; }
   if (h.buffs.length) h.buffs = h.buffs.filter(b => b.until > G.t);
   applyBuffs(h);
@@ -938,6 +1039,13 @@ function updateHero(h, dt) {
   }
   if (h.leap) { updateLeap(h, dt); return; }
   if (h.dash) { updateDash(h, dt); return; }
+  // Cleanse works while stunned or rooted.
+  if ((h.stunT > 0 || h.rootT > 0) && h.spell === 'cleanse' && h.cds.sp <= 0) {
+    if (h.human) {
+      const i = h.input.casts.findIndex(c => c.key === 'sp');
+      if (i >= 0) { const c = h.input.casts.splice(i, 1)[0]; cast(h, 'sp', c.x, c.y); }
+    } else if (Math.max(h.stunT, h.rootT) > 0.5 && G.heroes.some(e => !e.dead && e.team !== h.team && dist(e, h) < 700)) cast(h, 'sp', h.x, h.y);
+  }
   if (h.stunT > 0) return;
   if (h.human) controlHuman(h, dt);
   else controlBot(h, dt);
@@ -957,6 +1065,7 @@ function controlHuman(h, dt) {
   const mv = inp.mv;
   const moving = !!mv && Math.hypot(mv.x, mv.y) > 0.15 && h.rootT <= 0;
   if (moving && h.recall) h.recall = null;
+  if ((moving || inp.moveTo) && h.regenCh) h.regenCh = null;
   if (inp.target) {
     const t = G.units.find(u => u.id === inp.target);
     inp.target = 0;
@@ -1152,8 +1261,16 @@ function update(dt) {
   if (G.buyTimer <= 0) { G.buyTimer = 0.5; autoBuy(); }
 }
 
+// Aiming info for a cast key: hero skills, the battle spell (aimed ones only) and Regen.
+const SELF = { type: 'buff' };
+function skillDef(h, key) {
+  if (key === 'sp') { const sp = D.SPELL[h.spell]; return (sp && sp.aim) || SELF; }
+  if (key === 'rg') return SELF;
+  return h.def.skill[key];
+}
+
 LF.sim = {
-  createGame, update, cast, startRecall, canBuy, purchasePlan, partCredit, cleanBuild, nextRecommended, nextPurchase, SELL_RATE, PART_CREDIT, pickAttackTarget, isTargetable, isStructure, validFoe, seen,
+  createGame, skillDef, update, cast, startRecall, canBuy, purchasePlan, partCredit, cleanBuild, nextRecommended, nextPurchase, SELL_RATE, PART_CREDIT, pickAttackTarget, isTargetable, isStructure, validFoe, seen,
   dist, gap, clamp, rand, moveToward, emptyInput, skillValue, hasBuff, enemyUnitsNear,
   get G() { return G; },
 };

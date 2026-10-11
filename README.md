@@ -31,11 +31,28 @@ Three transports share the same code (`src/net.js`), picked automatically:
 | Attack | Hold `Space`, or click an enemy | Attack button |
 | Skills | Hold `Q` / `E` / `R` to aim at the cursor, release to cast | Drag a skill button to aim, tap to auto-aim |
 | Recall | `B` | Home button |
+| Regen | `H` | Plus button |
+| Battle spell | `F` (hold to aim Blink) | Spell button |
 | Shop | `P` | Bag button |
 | Scoreboard | `Tab` | List button |
 | Mute sound | `M` | Sound button (menu, pause menu or in-game) |
 
 The ultimate unlocks at level 4.
+
+**Regen and battle spells**: every hero has Recall and **Regen**, which restores 35% of your health over
+5 seconds while you stand still (moving, attacking, casting or taking damage from heroes and towers stops
+it; 25 second cooldown). Before the match you also pick one **battle spell** per hero on the hero select
+screen or in the lobby:
+
+| Spell | Cooldown | Effect |
+| --- | --- | --- |
+| Blink | 100s | Teleport a short distance |
+| Smite | 35s | 450 + 40/level true damage to a monster or minion |
+| Reap | 90s | True damage to a nearby enemy hero, more the more health they're missing |
+| Cleanse | 90s | Break stuns, roots and slows; 1.2 s immunity and a burst of speed |
+| Sprint | 90s | 45% move speed for 5 seconds |
+| Aegis | 90s | Shield yourself and the most hurt nearby ally |
+| Stonegaze | 90s | Stun and damage enemies around you |
 
 **Shop**: press `P` (or the bag button) to buy and sell items anywhere. Items come in three tiers:
 

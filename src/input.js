@@ -3,7 +3,7 @@
 'use strict';
 (function (LF) {
 const D = LF.data;
-const KEY_TO_SKILL = { q: 's1', '1': 's1', e: 's2', '2': 's2', r: 'ult', '3': 'ult' };
+const KEY_TO_SKILL = { q: 's1', '1': 's1', e: 's2', '2': 's2', r: 'ult', '3': 'ult', f: 'sp', '4': 'sp' };
 
 const S = {
   enabled: false, view: null,
@@ -27,7 +27,7 @@ function init(c) {
   ui.joyKnob = document.getElementById('joyKnob');
   ui.attack = document.getElementById('btnAttack');
   ui.recall = document.getElementById('btnRecall');
-  ui.skills = { s1: document.getElementById('sk-s1'), s2: document.getElementById('sk-s2'), ult: document.getElementById('sk-ult') };
+  ui.skills = { s1: document.getElementById('sk-s1'), s2: document.getElementById('sk-s2'), ult: document.getElementById('sk-ult'), sp: document.getElementById('sk-sp'), rg: document.getElementById('btnRegen') };
   ui.minimap = document.getElementById('minimap');
 
   window.addEventListener('keydown', onKeyDown);
@@ -73,8 +73,9 @@ function init(c) {
   ui.attack.addEventListener('pointerup', atkEnd);
   ui.attack.addEventListener('pointercancel', atkEnd);
   ui.recall.addEventListener('click', () => recall());
+  ui.skills.rg.addEventListener('click', () => regen());
 
-  for (const key of ['s1', 's2', 'ult']) bindSkillButton(key, ui.skills[key]);
+  for (const key of ['s1', 's2', 'ult', 'sp']) bindSkillButton(key, ui.skills[key]);
 
   ui.minimap.addEventListener('pointerdown', e => {
     if (!S.enabled) return;
@@ -98,8 +99,10 @@ function onKeyDown(e) {
   if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) { S.keys.add(k); e.preventDefault(); return; }
   if (k === ' ' || k === 'j') { S.attackKey = true; e.preventDefault(); return; }
   if (k === 'b') { recall(); return; }
+  if (k === 'h') { regen(); return; }
   if (k === 'p') { if (LF.ui) LF.ui.toggleShop(); return; }
   const sk = KEY_TO_SKILL[k];
+  if (sk && !aimed(sk)) { const p = autoAim(sk); cast(sk, p.x, p.y); e.preventDefault(); return; }
   if (sk) { S.aim = { key: sk, src: 'key' }; ui.skills[sk].classList.add('aiming'); e.preventDefault(); }
 }
 function onKeyUp(e) {
@@ -202,7 +205,7 @@ function bindSkillButton(key, el) {
     if (!st.drag) return;
     const h = S.view && S.view.player;
     if (!h) return;
-    const sk = h.def.skill[key];
+    const sk = LF.sim.skillDef(h, key);
     const dir = LF.render.dirToWorld(dx / (d || 1), dy / (d || 1));
     const reach = (sk.range || sk.radius || 300) * Math.min(1, d / 110);
     S.aim = { key, src: 'touch', x: h.x + dir.x * Math.max(reach, 40), y: h.y + dir.y * Math.max(reach, 40) };
@@ -228,10 +231,33 @@ function bindSkillButton(key, el) {
   el.addEventListener('pointercancel', end);
 }
 
+// Does this key aim (hold to aim, release to cast)? Self-cast spells and Regen fire on press.
+function aimed(key) {
+  const h = S.view && S.view.player;
+  return !!h && LF.sim.skillDef(h, key).type !== 'buff';
+}
 // Tap-to-cast: aim at the best enemy for this skill.
 function autoAim(key) {
   const v = S.view, h = v.player;
-  const sk = h.def.skill[key];
+  if (key === 'sp' && h.spell === 'smite') {
+    let best = null, bd = Infinity;
+    for (const m of v.monsters.concat(v.minions)) {
+      if (m.dead || m.team === h.team) continue;
+      const d = Math.hypot(m.x - h.x, m.y - h.y) - (m.kind === 'monster' ? 200 : 0);
+      if (d < bd) { bd = d; best = m; }
+    }
+    return best ? { x: best.x, y: best.y } : { x: h.x, y: h.y };
+  }
+  if (key === 'sp' && h.spell === 'reap') {
+    let best = null, bd = Infinity;
+    for (const e of v.heroes) {
+      if (e.dead || e.team === h.team || (e.hidden && e.hidden[h.team])) continue;
+      const d = Math.hypot(e.x - h.x, e.y - h.y);
+      if (d < bd) { bd = d; best = e; }
+    }
+    return best ? { x: best.x, y: best.y } : { x: h.x, y: h.y };
+  }
+  const sk = LF.sim.skillDef(h, key);
   if (sk.type === 'nova' || sk.type === 'buff' || (sk.type === 'zone' && sk.follow)) return { x: h.x, y: h.y };
   if (sk.ai === 'heal' && sk.type === 'zone') {
     let low = null;
@@ -269,7 +295,8 @@ function cast(key, x, y) {
   if (h.dead) why = 'dead';
   else if (key === 'ult' && h.level < D.ULT_LEVEL) why = 'locked';
   else if (h.cds[key] > 0.05) why = 'cooldown';
-  else if (h.mana < sk.mana) why = 'mana';
+  else if (sk && h.mana < sk.mana) why = 'mana';
+  else if (key === 'rg' && h.hp >= h.maxHp) why = 'full';
   if (why) { deny(key, why); return; }
   S.castSeq++;
   S.casts.push({ key, x, y });
@@ -281,6 +308,12 @@ function deny(key, why) {
   el.classList.remove('deny'); void el.offsetWidth; el.classList.add('deny');
   if (LF.audio) LF.audio.play('deny', 0.6);
   if (LF.ui) LF.ui.denyReason(key, why);
+}
+
+function regen() {
+  if (!S.enabled) return;
+  const h = S.view && S.view.player;
+  if (h) cast('rg', h.x, h.y);
 }
 
 function recall() {

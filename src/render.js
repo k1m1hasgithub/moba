@@ -148,6 +148,13 @@ function consumeEvents(view) {
         else if (e.vis === 'crit') { if (near) { addText(e.x, e.y - 70, 'Crit!', '#ffd25a', 18); burst(e.x, e.y - 30, '#ffd25a', 10, 260, 0.35); } }
         else if (e.vis === 'zap') { fx.push({ k: 'zap', x: e.x, y: e.y - 30, x2: e.x2, y2: e.y2 - 30, t: 0, life: 0.3, seed: Math.random() * 100 }); burst(e.x2, e.y2 - 30, '#bfe8ff', 10, 220, 0.35); }
         else if (e.vis === 'echo') { ring(e.x, e.y, 10, 120, '#c9a2ff', 0.45, 5); burst(e.x, e.y - 30, '#e2ccff', 16, 260, 0.45); }
+        else if (e.vis === 'regen') { ring(e.x, e.y, 10, 70, '#7be38a', 0.5, 5); }
+        else if (e.vis === 'smite') { fx.push({ k: 'zap', x: e.x + 40, y: e.y - 260, x2: e.x, y2: e.y - 20, t: 0, life: 0.35, seed: Math.random() * 100 }); burst(e.x, e.y - 20, '#ffcf6a', 26, 320, 0.5); ring(e.x, e.y, 10, 90, '#ffcf6a', 0.4, 6); if (near && LF.audio) LF.audio.play('boom', 0.5); }
+        else if (e.vis === 'reap') { fx.push({ k: 'slash', x: e.x, y: e.y - 40, t: 0, life: 0.45, color: '#ff6a7a', ang: 0.9, len: 130 }); burst(e.x, e.y - 30, '#ff5263', 24, 320, 0.5); shake(near ? 5 : 0); }
+        else if (e.vis === 'cleanse') { ring(e.x, e.y, 10, 90, '#9ff0ff', 0.45, 6); burst(e.x, e.y - 30, '#e8fdff', 20, 260, 0.45); }
+        else if (e.vis === 'sprint') { for (let i = 0; i < 12; i++) fx.push({ k: 'rise', x: e.x + (Math.random() - 0.5) * 50, y: e.y, t: 0, life: 0.5, color: '#9cf0b0' }); ring(e.x, e.y, 10, 60, '#9cf0b0', 0.35, 4); }
+        else if (e.vis === 'aegis') { ring(e.x, e.y, 30, 70, '#ffe08a', 0.5, 7); burst(e.x, e.y - 30, '#fff3c8', 14, 200, 0.4); }
+        else if (e.vis === 'gaze') { ring(e.x, e.y, 20, e.r || 240, '#c9ccd4', 0.6, 10); burst(e.x, e.y - 20, '#b0b4bc', 30, 380, 0.6); shake(near ? 6 : 0); if (near && LF.audio) LF.audio.play('boom', 0.5); }
         else if (e.vis === 'fortify') { ring(e.x, e.y, 30, 90, '#ffe08a', 0.6, 8); for (let i = 0; i < 10; i++) fx.push({ k: 'rise', x: e.x + (Math.random() - 0.5) * 60, y: e.y, t: 0, life: 0.8, color: '#ffe08a' }); }
         else if (e.vis === 'buff') { for (let i = 0; i < 14; i++) fx.push({ k: 'rise', x: e.x + (Math.random() - 0.5) * 50, y: e.y, t: 0, life: 0.7 + Math.random() * 0.4, color: T.light }); }
         else if (e.vis === 'shot' || e.vis === 'claw') {
@@ -357,6 +364,18 @@ function drawUnit(u, player) {
     const fl = heroFlags(u);
     if (fl & 1) { ctx.strokeStyle = 'rgba(110,200,255,0.8)'; ctx.lineWidth = 2; A.ellipse(ctx, 0, 2, r * 1.5, r * 0.65); ctx.stroke(); }
     if (fl & 2) { ctx.strokeStyle = 'rgba(255,140,60,0.8)'; ctx.lineWidth = 2; A.ellipse(ctx, 0, 2, r * 1.6, r * 0.7); ctx.stroke(); }
+  }
+  if (u.regenCh) {
+    // Regen: a green ring that fills and little plus signs floating up.
+    const k = Math.min(1, (u.regenCh.t || 0) / D.REGEN.time);
+    ctx.strokeStyle = 'rgba(123,227,138,0.9)'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.ellipse(0, 2, 40, 17, 0, -Math.PI / 2, -Math.PI / 2 + k * TAU); ctx.stroke();
+    ctx.fillStyle = 'rgba(160,255,170,0.85)';
+    for (let i = 0; i < 4; i++) {
+      const q = ((now * 0.7 + i / 4) % 1), px = Math.sin(i * 2.3 + now) * 24, py = -20 - q * 90;
+      ctx.globalAlpha = 1 - q; ctx.fillRect(px - 1.5, py - 6, 3, 12); ctx.fillRect(px - 6, py - 1.5, 12, 3);
+    }
+    ctx.globalAlpha = 1;
   }
   if (u.recall) {
     const k = Math.min(1, (u.recall.t || 0) / 3.5);
@@ -637,7 +656,7 @@ function drawFx(dt) {
 }
 
 function drawAim(h, aim) {
-  const sk = h.def.skill[aim.key];
+  const sk = LF.sim.skillDef(h, aim.key);
   if (!sk) return;
   const ang = Math.atan2(aim.y - h.y, aim.x - h.x);
   const want = Math.hypot(aim.x - h.x, aim.y - h.y);

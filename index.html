@@ -52,6 +52,8 @@
       <button class="act act-skill" id="sk-s1" data-key="s1" type="button"><img alt=""><i class="cd"></i><b class="cdt"></b><span class="cost"></span><kbd>Q</kbd></button>
       <button class="act act-skill" id="sk-s2" data-key="s2" type="button"><img alt=""><i class="cd"></i><b class="cdt"></b><span class="cost"></span><kbd>E</kbd></button>
       <button class="act act-skill act-ult" id="sk-ult" data-key="ult" type="button"><img alt=""><i class="cd"></i><b class="cdt"></b><span class="cost"></span><kbd>R</kbd></button>
+      <button class="act act-skill act-spell" id="sk-sp" data-key="sp" type="button"><img alt=""><i class="cd"></i><b class="cdt"></b><kbd>F</kbd></button>
+      <button class="act act-small act-regen" id="btnRegen" type="button" aria-label="Regen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg><i class="cd"></i><b class="cdt"></b><kbd>H</kbd></button>
       <button class="act act-small" id="btnRecall" type="button" aria-label="Recall to base"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 6v12H5V9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 21v-6h4v6" fill="currentColor"/></svg><kbd>B</kbd></button>
     </div>
     <div class="recall-bar" id="recallBar" hidden><span>Recalling</span><i></i></div>
@@ -106,6 +108,15 @@
     </div>
   </div>
 
+  <!-- ============ Battle spell picker ============ -->
+  <div id="spellPick" class="overlay dim" hidden>
+    <div class="sheet spell-sheet" role="dialog" aria-label="Battle spell">
+      <header class="sheet-head"><h2 id="spellTitle">Battle spell</h2><button class="btn ghost" id="spellClose" type="button">Close</button></header>
+      <p class="hint">Every hero also has <strong>Regen</strong> (<kbd>H</kbd>) and <strong>Recall</strong> (<kbd>B</kbd>). Your battle spell (<kbd>F</kbd>) is your one special ability for the match.</p>
+      <div class="spell-list" id="spellList"></div>
+    </div>
+  </div>
+
   <!-- ============ Scoreboard ============ -->
   <div id="scoreboard" class="overlay dim" hidden>
     <div class="sheet wide">
@@ -156,6 +167,7 @@
           <p class="dtitle" id="dTitle"></p>
           <div class="stats" id="dStats"></div>
           <ul class="skills" id="dSkills"></ul>
+          <div id="dSpell"></div>
           <div class="dbuild" id="dBuild"></div>
         </div>
       </div>
@@ -239,11 +251,13 @@
           <dt>Attack</dt><dd><kbd>Space</kbd> (hold) or click an enemy. Heroes are targeted first.</dd>
           <dt>Skills</dt><dd><kbd>Q</kbd> <kbd>E</kbd> and <kbd>R</kbd> (ultimate, level 4). Hold to aim at the cursor, release to cast. On touch, drag a skill button to aim, or tap it to auto-aim.</dd>
           <dt>Recall</dt><dd><kbd>B</kbd> teleports you to base after 3.5 seconds.</dd>
+          <dt>Regen</dt><dd><kbd>H</kbd> restores 35% of your health over 5 seconds while you stand still. Every hero has it (25s cooldown).</dd>
+          <dt>Battle spell</dt><dd><kbd>F</kbd> casts the special ability you picked before the match: Blink, Smite, Reap, Cleanse, Sprint, Aegis or Stonegaze.</dd>
           <dt>Scoreboard</dt><dd><kbd>Tab</kbd></dd>
         </dl>
         <h3 class="mt">Tips</h3>
         <ul class="tips">
-          <li>Landing the final hit on a minion gives you its gold. Items are bought for you automatically.</li>
+          <li>Landing the final hit on a minion gives you its gold. Press <kbd>P</kbd> to shop, or turn on auto-buy there.</li>
           <li>Towers hit minions first, but switch to you if you attack an enemy hero nearby.</li>
           <li>Junglers: the Azure Wisp speeds up your skills, the Ember Brute makes your attacks burn.</li>
           <li>The Tidewarden (2:00) pays the whole team. The Lord (8:00) makes your whole team hit harder.</li>

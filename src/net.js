@@ -172,11 +172,11 @@ function connect() {
 // ---------------------------------------------------------------------------
 const VIS = ['', 'arrow', 'bigarrow', 'bullet', 'snipe', 'light', 'bolt', 'hex', 'hexorb', 'petal', 'snare', 'spear', 'tower', 'cannon', 'minion',
   'cleave', 'slam', 'pounce', 'knives', 'roar', 'bloom', 'shot', 'claw', 'field', 'star', 'quake', 'buff', 'blink', 'execute', 'impact',
-  'rain', 'whirl', 'rift', 'sanctuary', 'crit', 'zap', 'echo', 'fortify'];
+  'rain', 'whirl', 'rift', 'sanctuary', 'crit', 'zap', 'echo', 'fortify', 'regen', 'smite', 'reap', 'cleanse', 'sprint', 'aegis', 'gaze'];
 const VIS_I = Object.fromEntries(VIS.map((v, i) => [v, i]));
 const MT = ['melee', 'caster', 'siege'];
 const MONS = Object.keys(D.MONSTERS);
-const KEYS = ['', 's1', 's2', 'ult'];
+const KEYS = ['', 's1', 's2', 'ult', 'sp', 'rg'];
 const TAGS = ['', 'First Blood', 'Double Kill', 'Triple Kill', 'Mega Kill', 'Wipe Out', 'Shutdown', 'Killing Spree', 'Unstoppable', 'Legendary'];
 const EV = ['', 'kill', 'tower', 'monster', 'fx', 'level', 'gold', 'cast', 'recalled', 'respawn', 'buy', 'ace', 'gameover', 'spawn', 'recall', 'heal', 'sell'];
 const EV_I = Object.fromEntries(EV.map((v, i) => [v, i]));
@@ -299,7 +299,7 @@ function encodeMain(G, seq, withStats) {
     s: seq, t: r(G.t * 10), k: G.kills, o: G.over ? G.winner : -1,
     h: G.heroes.map(u => [r(u.x), r(u.y), r(Math.max(0, u.hp)), r(u.mana), r((((u.facing % TAU) + TAU) % TAU) * 10), u.level, heroBits(u),
       u.dead ? Math.ceil(u.respawn) : 0, u.atkN % 100, u.castN % 100, KEYS.indexOf(u.castKey), r(u.shield), r(u.air), u.recall ? r(u.recall.t * 10) : -1,
-      r(u.cds.s1 * 10), r(u.cds.s2 * 10), r(u.cds.ult * 10)]),
+      r(u.cds.s1 * 10), r(u.cds.s2 * 10), r(u.cds.ult * 10), u.regenCh ? r(u.regenCh.t * 10) : -1, r(u.cds.sp * 10), r(u.cds.rg * 10)]),
     b: G.structs.map(s => pctOf(s) * 16 + (s.target && s.target.kind === 'hero' ? s.target.seat + 1 : 0)),
     z: G.zones.slice(0, 10).map(z => [r(z.x), r(z.y), r(z.r), VIS_I[z.vis] || 0, z.team, r(z.t * 10), r((z.kind === 'circle' ? z.delay : z.dur) * 10), z.kind === 'circle' ? 0 : 1]),
     e: G.events.slice(-12).map(encodeEvent).filter(Boolean),
@@ -322,6 +322,8 @@ function encodeWorld(G, seq) {
 // ---------------------------------------------------------------------------
 // Client-side mirror: rebuilds a view of the game from snapshots.
 // ---------------------------------------------------------------------------
+// A lobby slot's battle spell (index in D.SPELLS), or the role default.
+function slotSpell(s, def) { return s && D.SPELLS[s.sp] ? D.SPELLS[s.sp].id : D.ROLE_SPELL[def.role]; }
 function createMirror(slots, mySeat) {
   const V = {
     t: 0, heroes: [], minions: [], monsters: [], structs: [], projs: [], zones: [], events: [], kills: [0, 0],
@@ -334,7 +336,8 @@ function createMirror(slots, mySeat) {
       x: D.FOUNTAIN[seat < 5 ? 0 : 1].x, y: D.FOUNTAIN[seat < 5 ? 0 : 1].y, tx: 0, ty: 0, r: 26,
       hp: def.stats.hp, maxHp: def.stats.hp, mana: def.stats.mana, maxMana: def.stats.mana, level: 1, facing: 0,
       atkN: 0, castN: 0, castKey: '', dead: false, respawn: 0, shield: 0, air: 0, recall: null, stunT: 0, rootT: 0, slowT: 0,
-      cds: { s1: 0, s2: 0, ult: 0 }, k: 0, d: 0, a: 0, gold: 0, cs: 0, xp: 0, items: [], flags: 0, goldTotal: 0,
+      cds: { s1: 0, s2: 0, ult: 0, sp: 0, rg: 0 }, k: 0, d: 0, a: 0, gold: 0, cs: 0, xp: 0, items: [], flags: 0, goldTotal: 0,
+      spell: slotSpell(s, def), regenCh: null,
       ad: def.stats.ad, ap: 0, armor: def.stats.armor, ms: def.stats.ms, as: def.stats.as, init: false,
     });
   });
@@ -372,7 +375,8 @@ function applyMain(V, g) {
     h.hidden = [!!(bits & 128), !!(bits & 256)];
     h.respawn = a[7]; h.atkN = a[8]; h.castN = a[9]; h.castKey = KEYS[a[10]]; h.shield = a[11]; h.air = a[12];
     h.recall = a[13] >= 0 ? { t: a[13] / 10 } : null;
-    h.cds = { s1: a[14] / 10, s2: a[15] / 10, ult: a[16] / 10 };
+    h.cds = { s1: a[14] / 10, s2: a[15] / 10, ult: a[16] / 10, sp: a[18] / 10, rg: a[19] / 10 };
+    h.regenCh = a[17] >= 0 ? { t: a[17] / 10 } : null;
   });
   g.b.forEach((v, i) => {
     const s = V.structs[i];
@@ -454,9 +458,10 @@ function smooth(V, dt) {
     if (!h.init) continue;
     if (Math.hypot(h.tx - h.x, h.ty - h.y) > 500) { h.x = h.tx; h.y = h.ty; }
     h.x += (h.tx - h.x) * k; h.y += (h.ty - h.y) * k;
-    for (const key of ['s1', 's2', 'ult']) h.cds[key] = Math.max(0, h.cds[key] - dt);
+    for (const key of ['s1', 's2', 'ult', 'sp', 'rg']) h.cds[key] = Math.max(0, h.cds[key] - dt);
     if (h.dead) h.respawn = Math.max(0, h.respawn - dt);
     if (h.recall) h.recall.t += dt;
+    if (h.regenCh) h.regenCh.t += dt;
   }
   for (const m of V.minions) if (m.tx !== undefined) { m.x += (m.tx - m.x) * k; m.y += (m.ty - m.y) * k; }
   for (const m of V.monsters) { m.x += (m.tx - m.x) * k; m.y += (m.ty - m.y) * k; }
@@ -610,8 +615,9 @@ class Party {
         }
         const s = slots[cur];
         const hero = Number.isInteger(pr.hero) && pr.hero >= 0 && pr.hero < D.HEROES.length ? pr.hero : s.h;
+        const sp = Number.isInteger(pr.spell) && D.SPELLS[pr.spell] ? pr.spell : s.sp;
         const nm = cleanName(pr.nm);
-        if (s.h !== hero || s.n !== nm) { slots[cur] = { p: s.p, h: hero, n: nm }; changed = true; }
+        if (s.h !== hero || s.n !== nm || s.sp !== sp) { slots[cur] = { p: s.p, h: hero, n: nm, sp }; changed = true; }
       }
     }
     if (changed) { this.L = Object.assign({}, this.L, { slots }); this.pushLobby(); }
@@ -634,6 +640,14 @@ class Party {
     this.L = Object.assign({}, this.L, { slots });
     this.pushLobby();
   }
+  hostSpell(sp) {
+    const slots = this.L.slots.slice();
+    const cur = slots.findIndex(s => s && s.p === this.me);
+    if (cur < 0) return;
+    slots[cur] = Object.assign({}, slots[cur], { sp });
+    this.L = Object.assign({}, this.L, { slots });
+    this.pushLobby();
+  }
   setDiff(d) { this.L = Object.assign({}, this.L, { diff: d }); this.pushLobby(); }
   // Fill empty seats with bots and start. Returns the seat config for the sim.
   start() {
@@ -643,13 +657,13 @@ class Party {
       const used = this.L.slots.filter((x, i) => x && (i < 5 ? 0 : 1) === team).map(x => x.h);
       const opts = D.HEROES.map((h, i) => i).filter(i => D.HEROES[i].role === D.ROLES[seat % 5].id && !used.includes(i));
       const pick = opts.length ? opts[(Math.random() * opts.length) | 0] : firstHeroFor(seat % 5);
-      return { b: 1, h: pick };
+      return { b: 1, h: pick, sp: D.SPELL_INDEX[D.ROLE_SPELL[D.ROLES[seat % 5].id]] };
     });
     this.L = Object.assign({}, this.L, { slots, ph: 'game', startedAt: Date.now() });
     this.seq = 0;
     this.pushLobby();
     return slots.map((s, seat) => ({
-      hero: D.HEROES[s.h].id, human: !!s.p, local: s.p === this.me, peer: s.p || null,
+      hero: D.HEROES[s.h].id, human: !!s.p, local: s.p === this.me, peer: s.p || null, spell: slotSpell(s, D.HEROES[s.h]),
       name: s.p ? s.n : D.HEROES[s.h].name, diff: this.L.diff,
     }));
   }
@@ -720,6 +734,7 @@ class Party {
   // ----- client -----
   pickSlot(seat) { this.want = seat; this.room.presence({ want: seat }); }
   pickHero(hero) { this.hero = hero; if (this.isHost) this.hostPick(hero); else this.room.presence({ hero }); }
+  pickSpell(sp) { if (this.isHost) this.hostSpell(sp); else this.room.presence({ spell: sp }); }
   mySeat() { return this.L.slots.findIndex(s => s && s.p === this.me); }
   startMirror() {
     this.mirror = createMirror(this.L.slots, this.mySeat());

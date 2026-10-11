@@ -67,7 +67,7 @@ function startAI(heroId, diff) {
   const def = D.HERO[heroId];
   const seat = D.ROLE_INDEX[def.role];
   lastAI = { heroId, diff };
-  const seats = botSeats({ [seat]: { hero: heroId, human: true, local: true, name: LF.ui.nick } }, diff);
+  const seats = botSeats({ [seat]: { hero: heroId, human: true, local: true, name: LF.ui.nick, spell: LF.ui.spells.get(heroId) } }, diff);
   G = LF.sim.createGame({ seats });
   mode = 'ai';
   enterGame(G);
@@ -87,6 +87,7 @@ function enterGame(v) {
   $('scoreboard').hidden = true;
   $('shop').hidden = true;
   $('buildEd').hidden = true;
+  $('spellPick').hidden = true;
   LF.render.resize();
   LF.ui.setupHud(v);
   endShown = false; endTimer = 0; paused = false; acc = 0;
@@ -226,6 +227,7 @@ function quit() {
   toMenu();
 }
 function escape() {
+  if (!$('spellPick').hidden) { $('spellPick').hidden = true; return; }
   if (!$('buildEd').hidden) { LF.ui.closeBuild(); return; }
   if (!$('scoreboard').hidden) { $('scoreboard').hidden = true; return; }
   if (!$('shop').hidden) { $('shop').hidden = true; return; }

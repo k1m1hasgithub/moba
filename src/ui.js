@@ -62,6 +62,38 @@ function skillIcon(heroId, key) {
   iconCache.set(id, url);
   return url;
 }
+// Battle spell and Regen icons.
+const SPELL_TINT = { blink: '#7a6ad0', smite: '#d08a2a', reap: '#b03a4a', cleanse: '#3ab0c2', sprint: '#4ab06a', aegis: '#c2a24a', stonegaze: '#8a8f99', regen: '#3aa860' };
+function spellIcon(id) {
+  const key = 'spell:' + id;
+  if (iconCache.has(key)) return iconCache.get(key);
+  const c = document.createElement('canvas'); c.width = c.height = 96;
+  const g = c.getContext('2d');
+  const tint = SPELL_TINT[id] || '#888';
+  const bg = g.createRadialGradient(40, 30, 4, 48, 48, 70);
+  bg.addColorStop(0, A.shade(tint, 0.25)); bg.addColorStop(0.6, A.shade(tint, -0.35)); bg.addColorStop(1, A.shade(tint, -0.75));
+  g.fillStyle = bg; g.fillRect(0, 0, 96, 96);
+  g.strokeStyle = '#fffbe8'; g.fillStyle = '#fffbe8'; g.lineWidth = 7; g.lineCap = 'round'; g.lineJoin = 'round';
+  g.shadowColor = 'rgba(0,0,0,0.6)'; g.shadowBlur = 6;
+  g.save(); g.translate(48, 48);
+  switch (id) {
+    case 'blink': A.star(g, -12, 8, 20, 6, 4); g.fill(); A.star(g, 20, -16, 12, 4, 4); g.fill(); g.lineWidth = 3; g.setLineDash([4, 6]); g.beginPath(); g.moveTo(-6, 2); g.lineTo(14, -10); g.stroke(); break;
+    case 'smite': g.beginPath(); g.moveTo(6, -36); g.lineTo(-12, 2); g.lineTo(4, 2); g.lineTo(-8, 36); g.lineTo(18, -8); g.lineTo(2, -8); g.lineTo(14, -36); g.closePath(); g.fill(); break;
+    case 'reap': g.beginPath(); g.moveTo(-26, 30); g.lineTo(14, -22); g.stroke(); g.beginPath(); g.moveTo(14, -22); g.quadraticCurveTo(34, -30, 30, -6); g.quadraticCurveTo(22, -20, 6, -14); g.closePath(); g.fill(); break;
+    case 'cleanse': g.lineWidth = 6; g.beginPath(); g.arc(0, 0, 26, 0.3, TAU - 0.3); g.stroke(); g.beginPath(); g.moveTo(-12, 0); g.lineTo(-3, 10); g.lineTo(14, -10); g.stroke(); break;
+    case 'sprint': for (const o of [-18, 0, 18]) { g.beginPath(); g.moveTo(o - 10, -18); g.lineTo(o + 6, 0); g.lineTo(o - 10, 18); g.stroke(); } break;
+    case 'aegis': g.beginPath(); g.moveTo(0, -30); g.lineTo(26, -20); g.lineTo(22, 10); g.lineTo(0, 32); g.lineTo(-22, 10); g.lineTo(-26, -20); g.closePath(); g.fill(); g.fillStyle = A.shade(tint, -0.3); A.star(g, 0, -2, 12, 5, 5); g.fill(); break;
+    case 'stonegaze': g.beginPath(); g.ellipse(0, 0, 32, 18, 0, 0, TAU); g.stroke(); g.beginPath(); g.arc(0, 0, 10, 0, TAU); g.fill(); g.lineWidth = 3; for (const a of [-2.4, -1.57, -0.7]) { g.beginPath(); g.moveTo(Math.cos(a) * 24, Math.sin(a) * 24 - 4); g.lineTo(Math.cos(a) * 36, Math.sin(a) * 36 - 6); g.stroke(); } break;
+    case 'regen': g.fillRect(-8, -28, 16, 56); g.fillRect(-28, -8, 56, 16); break;
+    default: g.beginPath(); g.arc(0, 0, 20, 0, TAU); g.fill();
+  }
+  g.restore();
+  g.shadowBlur = 0; g.lineWidth = 5; g.strokeStyle = 'rgba(255,255,255,0.4)'; g.strokeRect(0, 0, 96, 96);
+  const url = c.toDataURL();
+  iconCache.set(key, url);
+  return url;
+}
+
 const ICON_TINT = {
   boots: '#6a8bb0', machete: '#7a9a4a', sword: '#b0b8c2', bow: '#9a7a4a', fang: '#b04a4a', axe: '#c27a3a', staff: '#7a6ad0', clock: '#4ab0c2',
   crown: '#a04ad0', armor: '#7a8a9a', helm: '#c2a24a', charm: '#4ac27a', dagger: '#a8b0b8', feather: '#5ac2c2', gem: '#8a6ae0', shard: '#4a8ae0',
@@ -168,7 +200,13 @@ function init() {
   $('scoreClose').addEventListener('click', () => showScore(false));
   initShop();
   // "Customize build" buttons on the hero select screen and in the lobby.
-  document.addEventListener('click', e => { const b = e.target.closest('[data-edit-build]'); if (b) { click(); openBuild(b.dataset.editBuild); } });
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-edit-build]');
+    if (b) { click(); openBuild(b.dataset.editBuild); }
+    const sp = e.target.closest('[data-pick-spell]');
+    if (sp) { click(); openSpell(sp.dataset.pickSpell); }
+  });
+  initSpellPick();
   $('btnScore').addEventListener('click', () => showScore($('scoreboard').hidden));
   for (const id of ['btnSound', 'soundToggle', 'pauseSound']) $(id).addEventListener('click', toggleSound);
   window.addEventListener('keydown', e => {
@@ -246,6 +284,7 @@ function renderDetail(id) {
     meter('Range', s.range / 400) + meter('Mobility', (s.ms - 250) / 55 + (h.skills.some(k => ['dash', 'leap', 'blink'].includes(k.type)) ? 0.3 : 0));
   const sk = h.skills.map(k => `<li><img src="${skillIcon(id, k.key)}" alt=""><div><strong>${k.key === 'ult' ? 'Ultimate · ' : ''}${esc(k.name)}<em>${k.cd}s · ${k.mana} mana</em></strong><p>${esc(k.desc)}</p></div></li>`).join('');
   $('dSkills').innerHTML = `<li><img src="${A.portrait(id, 40)}" alt=""><div><strong>Passive · ${esc(h.passive.name)}</strong><p>${esc(h.passive.desc)}</p></div></li>` + sk;
+  $('dSpell').innerHTML = spellBlockHtml(id);
   $('dBuild').innerHTML = buildBlockHtml(id);
 }
 function startShowcase() {
@@ -426,6 +465,14 @@ function setupHud(view) {
       el.setAttribute('aria-label', sk.name);
     }
   }
+  if (h) {
+    const sp = D.SPELL[h.spell];
+    const el = $('sk-sp');
+    el.querySelector('img').src = spellIcon(sp.id);
+    el.title = `${sp.name} (battle spell, F): ${sp.desc}`;
+    el.setAttribute('aria-label', 'Battle spell: ' + sp.name);
+    $('btnRegen').title = `Regen (H): stand still to restore ${Math.round(D.REGEN.heal * D.REGEN.time * 100)}% of your health over ${D.REGEN.time} seconds. Moving, attacking or taking damage from heroes and towers stops it.`;
+  }
   $('heroPanel').hidden = !h;
   $('actions').hidden = !h;
 }
@@ -491,9 +538,19 @@ function updateHud(view) {
       const txt = `Respawning in ${Math.max(1, Math.ceil(h.respawn))}`;
       if (hud.cache.get('center') !== txt) { hud.cache.set('center', txt); center.innerHTML = `${txt}<small>Your team fights on. The camera stays on your base.</small>`; }
     } else center.hidden = true;
+    for (const key of ['sp', 'rg']) {
+      const el = $(key === 'sp' ? 'sk-sp' : 'btnRegen');
+      const cd = h.cds[key] || 0, total = key === 'sp' ? D.SPELL[h.spell].cd : D.REGEN.cd;
+      el.classList.toggle('ready', cd <= 0 && !h.dead);
+      setVar(el, '--p', cd > 0 ? Math.min(1, cd / total).toFixed(3) : '0');
+      set(el.querySelector('.cdt'), cd > 0 ? String(Math.ceil(cd)) : '');
+    }
     const rb = $('recallBar');
-    rb.hidden = !h.recall;
-    if (h.recall) setVar(rb, '--p', Math.min(100, h.recall.t / 3.5 * 100).toFixed(0) + '%');
+    const ch = h.recall ? 'recall' : h.regenCh ? 'regen' : '';
+    rb.hidden = !ch;
+    rb.classList.toggle('regen', ch === 'regen');
+    set(rb.querySelector('span'), ch === 'regen' ? 'Regenerating' : 'Recalling');
+    if (ch) setVar(rb, '--p', Math.min(100, ch === 'recall' ? h.recall.t / 3.5 * 100 : h.regenCh.t / D.REGEN.time * 100).toFixed(0) + '%');
   }
   consumeEvents(view);
   if (hud.bannerQ.length && performance.now() > hud.bannerT) playBanner(hud.bannerQ.shift());
@@ -583,9 +640,10 @@ function toast(itemId, type) {
   LF.audio.play('gold', 0.5);
 }
 
-const WHY = { cooldown: 'Not ready yet', mana: 'Not enough mana', locked: 'Unlocks at level 4', dead: '', notarget: 'No enemy hero in range', rooted: 'Rooted', busy: '' };
+const WHY = { cooldown: 'Not ready yet', mana: 'Not enough mana', locked: 'Unlocks at level 4', dead: '', notarget: 'No enemy hero in range', rooted: 'Rooted', busy: '', full: 'Health is already full' };
 function denyReason(key, why) {
-  const msg = WHY[why];
+  const v0 = LF.main.view(), me = v0 && v0.player;
+  const msg = why === 'notarget' && key === 'sp' && me && me.spell === 'smite' ? 'No monster or minion in range' : WHY[why];
   if (!msg || performance.now() - hud.denyT < 600) return;
   hud.denyT = performance.now();
   const v = LF.main.view();
@@ -875,10 +933,57 @@ function renderLobbyBuild() {
   if (!p || $('lobby').hidden) return;
   const seat = p.mySeat(), s = seat >= 0 ? p.L.slots[seat] : null;
   const heroId = s && D.HEROES[s.h] ? D.HEROES[s.h].id : null;
-  const key = heroId + '|' + JSON.stringify(heroId && builds.get(heroId));
+  if (heroId) {
+    const want = D.SPELL_INDEX[spells.get(heroId)];
+    if (s.sp !== want && (p.sentSpell !== want || performance.now() - (p.sentSpellT || 0) > 3000)) { p.sentSpell = want; p.sentSpellT = performance.now(); p.pickSpell(want); }
+  }
+  const key = heroId + '|' + JSON.stringify(heroId && builds.get(heroId)) + '|' + (heroId && spells.get(heroId));
   if (el.dataset.key === key) return;
   el.dataset.key = key;
-  el.innerHTML = heroId ? buildBlockHtml(heroId) : '';
+  el.innerHTML = heroId ? spellBlockHtml(heroId) + buildBlockHtml(heroId) : '';
+}
+
+// ---------------------------------------------------------------------------
+// Battle spells: picked per hero before the match, remembered in this browser.
+// ---------------------------------------------------------------------------
+const spells = {
+  all() { try { return JSON.parse(localStorage.getItem('lf-spells') || '{}') || {}; } catch (e) { return {}; } },
+  get(heroId) { const s = this.all()[heroId]; return D.SPELL[s] ? s : D.ROLE_SPELL[D.HERO[heroId].role]; },
+  set(heroId, id) {
+    const all = this.all(); all[heroId] = id;
+    try { localStorage.setItem('lf-spells', JSON.stringify(all)); } catch (e) { /* ignore */ }
+  },
+};
+let spellHero = null;
+function initSpellPick() {
+  $('spellList').addEventListener('click', e => {
+    const b = e.target.closest('[data-spell]');
+    if (!b) return;
+    click();
+    spells.set(spellHero, b.dataset.spell);
+    renderSpellPick();
+    if (!$('select').hidden) renderDetail(sel.hero);
+    renderLobbyBuild();
+    setTimeout(() => { $('spellPick').hidden = true; }, 160);
+  });
+  $('spellClose').addEventListener('click', () => { click(); $('spellPick').hidden = true; });
+  $('spellPick').addEventListener('pointerdown', e => { if (e.target.id === 'spellPick') $('spellPick').hidden = true; });
+}
+function openSpell(heroId) {
+  spellHero = heroId;
+  $('spellPick').hidden = false;
+  renderSpellPick();
+}
+function renderSpellPick() {
+  const hd = D.HERO[spellHero], cur = spells.get(spellHero), rec = D.ROLE_SPELL[hd.role];
+  $('spellTitle').textContent = `Battle spell for ${hd.name}`;
+  $('spellList').innerHTML = D.SPELLS.map(s => `<button class="spell-card" type="button" data-spell="${s.id}" aria-pressed="${s.id === cur}">
+    <img src="${spellIcon(s.id)}" alt=""><div><strong>${esc(s.name)}<em>${s.cd}s cooldown</em>${s.id === rec ? '<span class="rec-tag">Suggested</span>' : ''}</strong><p>${esc(s.desc)}</p></div></button>`).join('');
+}
+function spellBlockHtml(heroId) {
+  const sp = D.SPELL[spells.get(heroId)];
+  return `<div class="spell-block"><img src="${spellIcon(sp.id)}" alt=""><div><p class="eyebrow">Battle spell · <kbd>F</kbd></p><strong>${esc(sp.name)}</strong><small>${sp.cd}s cooldown</small></div>
+    <button class="btn small" type="button" data-pick-spell="${heroId}">Change</button></div>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -907,7 +1012,7 @@ function renderScore(view, box, withMvp) {
       const txt = document.createElement('div');
       const nm = document.createElement('strong'); nm.textContent = (h.name || h.def.name) + (h === me ? ' (you)' : '');
       if (h === mvp) { const m = document.createElement('span'); m.className = 'mvp'; m.textContent = 'MVP'; nm.appendChild(m); }
-      const sm = document.createElement('small'); sm.textContent = `${D.ROLES[h.role].short} · ${h.def.name}${h.human ? '' : ' · bot'}`;
+      const sm = document.createElement('small'); sm.textContent = `${D.ROLES[h.role].short} · ${h.def.name} · ${D.SPELL[h.spell] ? D.SPELL[h.spell].name : ''}${h.human ? '' : ' · bot'}`;
       txt.append(nm, sm); who.append(img, txt); td1.appendChild(who);
       tr.appendChild(td1);
       tr.insertAdjacentHTML('beforeend', `<td>${h.level}</td><td>${h.k} / ${h.d} / ${h.a}</td><td>${h.cs}</td><td>${Math.round(h.goldTotal || h.gold)}</td><td><div class="itemrow">${h.items.map(i => `<img src="${itemIcon(i)}" alt="${esc(D.ITEM[i].name)}" title="${esc(D.ITEM[i].name)}">`).join('')}</div></td>`);
@@ -948,6 +1053,6 @@ function showEnd(view, actions) {
 
 LF.ui = {
   init, show, back, openSelect, mpStatus, renderLobbyList, openLobby, renderLobby, setupHud, updateHud, showScore, showEnd,
-  denyReason, skillIcon, itemIcon, toggleShop, openBuild, closeBuild, builds, get nick() { saveNick(); return nick; },
+  denyReason, skillIcon, itemIcon, spellIcon, toggleShop, openBuild, closeBuild, builds, spells, get nick() { saveNick(); return nick; },
 };
 })(window.LF);
