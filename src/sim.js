@@ -262,6 +262,7 @@ function damage(src, tgt, raw, o) {
     }
     if (G.teamBuff[src.team] > G.t) amt *= 1.15;
     src.lastDealt = G.t;
+    src.revealT = G.t;
   }
   if (src && src.kind === 'minion' && isStructure(tgt)) amt *= src.siege || 1;
   if (tgt.kind === 'hero' && tgt.def.passive.id === 'granite') amt *= 0.85;
@@ -498,7 +499,7 @@ function cast(h, key, ax, ay) {
   if (sk.type === 'execute') {
     let best = null, bd = Infinity;
     for (const u of G.heroes) {
-      if (u.dead || u.team === h.team || dist(h, u) > sk.range + u.r) continue;
+      if (u.dead || u.team === h.team || !seen(h.team, u) || dist(h, u) > sk.range + u.r) continue;
       const d = Math.hypot(u.x - ax, u.y - ay);
       if (d < bd) { bd = d; best = u; }
     }
@@ -716,7 +717,7 @@ function spawnWave() {
 function acquireFor(u, radius) {
   let best = null, bestScore = Infinity;
   for (const o of G.units) {
-    if (o.team === u.team || o.kind === 'monster' || !isTargetable(o)) continue;
+    if (o.team === u.team || o.kind === 'monster' || !isTargetable(o) || !seen(u.team, o)) continue;
     const g = gap(u, o);
     if (g > radius) continue;
     const score = g + (o.kind === 'hero' ? 160 : 0) + (isStructure(o) ? 40 : 0);
@@ -728,7 +729,7 @@ function acquireFor(u, radius) {
 function updateMinion(m, dt) {
   if (m.stunT > 0) return;
   const t = m.target;
-  if (t && !(isTargetable(t) && t.team !== m.team && gap(m, t) <= 520)) m.target = null;
+  if (t && !(isTargetable(t) && t.team !== m.team && seen(m.team, t) && gap(m, t) <= 520)) m.target = null;
   if (!m.target || (m.target.kind !== 'minion' && (m.retarget = (m.retarget || 0) - dt) <= 0)) {
     m.retarget = 0.6;
     const n = acquireFor(m, 380);
@@ -754,11 +755,11 @@ function updateMinion(m, dt) {
 
 function updateStructure(s) {
   const t = s.target;
-  if (t && !(isTargetable(t) && t.team !== s.team && t.kind !== 'monster' && gap(s, t) <= s.range)) s.target = null;
+  if (t && !(isTargetable(t) && t.team !== s.team && t.kind !== 'monster' && seen(s.team, t) && gap(s, t) <= s.range)) s.target = null;
   if (!s.target) {
     let best = null, bestScore = Infinity;
     for (const o of G.units) {
-      if (o.team === s.team || o.kind === 'monster' || isStructure(o) || !isTargetable(o)) continue;
+      if (o.team === s.team || o.kind === 'monster' || isStructure(o) || !isTargetable(o) || !seen(s.team, o)) continue;
       const g = gap(s, o);
       if (g > s.range) continue;
       const score = g + (o.kind === 'hero' ? 10000 : 0);
@@ -818,10 +819,28 @@ function startRecall(h) {
   ev('recall', { seat: h.seat });
 }
 
+// ---------------------------------------------------------------------------
+// Bushes and visibility
+// ---------------------------------------------------------------------------
+// A hero in a bush is hidden from the enemy team unless an enemy hero stands in the same
+// bush, or it dealt damage in the last second.
+function updateVisibility() {
+  for (const h of G.heroes) h.bush = h.dead ? -1 : D.bushAt(h.x, h.y);
+  for (const h of G.heroes) {
+    if (!h.hidden) h.hidden = [false, false];
+    for (const team of [BLUE, RED]) {
+      if (team === h.team || h.dead || h.bush < 0 || G.t - (h.revealT || -9) < 1) { h.hidden[team] = false; continue; }
+      h.hidden[team] = !G.heroes.some(o => !o.dead && o.team === team && o.bush === h.bush);
+    }
+  }
+}
+// Can `team` see unit `u`? Only heroes can hide.
+const seen = (team, u) => !(u.kind === 'hero' && u.hidden && team < 2 && u.hidden[team]);
+
 function pickAttackTarget(h, radius) {
   let best = null, bestScore = Infinity;
   for (const o of G.units) {
-    if (o.team === h.team || !isTargetable(o)) continue;
+    if (o.team === h.team || !isTargetable(o) || !seen(h.team, o)) continue;
     const g = gap(h, o);
     if (g > radius) continue;
     let score = g;
@@ -871,7 +890,7 @@ function updateHero(h, dt) {
   else controlBot(h, dt);
 }
 
-const validFoe = (h, t) => isTargetable(t) && t.team !== h.team;
+const validFoe = (h, t) => isTargetable(t) && t.team !== h.team && seen(h.team, t);
 
 function controlHuman(h, dt) {
   const inp = h.input;
@@ -977,6 +996,7 @@ function update(dt) {
   updateProjectiles(dt);
   updateZones(dt);
   separate();
+  updateVisibility();
   G.units = G.units.filter(u => !(u.kind === 'minion' && u.dead && G.t - u.deathT > 0.7));
   G.minions = G.units.filter(u => u.kind === 'minion');
   G.buyTimer -= dt;
@@ -984,7 +1004,7 @@ function update(dt) {
 }
 
 LF.sim = {
-  createGame, update, cast, startRecall, pickAttackTarget, isTargetable, isStructure, validFoe,
+  createGame, update, cast, startRecall, pickAttackTarget, isTargetable, isStructure, validFoe, seen,
   dist, gap, clamp, rand, moveToward, emptyInput, skillValue, hasBuff, enemyUnitsNear,
   get G() { return G; },
 };

@@ -22,6 +22,8 @@ function init(c, m) {
   miniTerrain.width = miniTerrain.height = 360;
   const g = miniTerrain.getContext('2d');
   g.drawImage(terrain, 0, 0, 360, 360);
+  g.fillStyle = '#123018';
+  for (const b of D.BUSHES) { g.beginPath(); g.arc(b.x / D.W * 360, b.y / D.H * 360, b.r / D.W * 360, 0, Math.PI * 2); g.fill(); }
   resize();
 }
 
@@ -79,14 +81,14 @@ function stepAnim(u, dt, view) {
   if (!u.dead && u.hp < a.hp - 0.5) {
     const lost = a.hp - u.hp;
     a.hurt = 1;
-    if (u.kind === 'hero') {
+    if (u.kind === 'hero' && visible(u)) {
       const mine = view.player && u === view.player;
       addText(u.x + (Math.random() - 0.5) * 30, u.y - 86, Math.round(lost), mine ? '#ff7a7a' : lost > 250 ? '#ffd24a' : '#ffffff', lost > 250 ? 30 : 22);
     } else if (view.player && view.player.attackTarget === u) {
       addText(u.x + (Math.random() - 0.5) * 20, u.y - 46, Math.round(lost), '#f4f4f4', 17);
     }
     if (LF.audio && view.player && u === view.player) LF.audio.play('hurt', 0.4);
-  } else if (!u.dead && u.kind === 'hero' && u.hp > a.hp + 25) {
+  } else if (!u.dead && u.kind === 'hero' && u.hp > a.hp + 25 && visible(u)) {
     addText(u.x, u.y - 94, '+' + Math.round(u.hp - a.hp), '#7be38a', 20);
   }
   a.hp = u.hp;
@@ -215,6 +217,16 @@ function upright(x, y) {
   if (cam.flip) ctx.transform(0, 1, 1, 0, 0, 0);
 }
 
+// Bush visibility from the point of view of the local player's team (-1 = see everything).
+let viewerTeam = -1;
+function visible(u) {
+  return u.kind !== 'hero' || viewerTeam < 0 || u.team === viewerTeam || !(u.hidden && u.hidden[viewerTeam]);
+}
+// An ally hidden from the enemy (drawn see-through, labelled).
+function concealed(u) {
+  return viewerTeam >= 0 && u.team === viewerTeam && !u.dead && !!(u.hidden && u.hidden[1 - u.team]);
+}
+
 function heroFlags(h) {
   if (h.flags !== undefined) return h.flags;
   let f = 0;
@@ -224,6 +236,7 @@ function heroFlags(h) {
 
 function draw(view, dt, opts) {
   now += dt;
+  viewerTeam = view.player ? view.player.team : view.mirror ? 0 : -1;
   consumeEvents(view);
   const player = view.player;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -248,6 +261,7 @@ function draw(view, dt, opts) {
 
   // Zones on the ground
   for (const z of view.zones) drawZoneGround(z);
+  for (const b of D.BUSHES) if (onScreen(b.x, b.y)) { upright(b.x, b.y); A.drawBush(ctx, b, 'base'); ctx.restore(); }
 
   // Enemy tower ranges near the player
   if (player && !player.dead) {
@@ -284,7 +298,7 @@ function draw(view, dt, opts) {
   for (const s of view.structs) if (onScreen(s.x, s.y)) list.push(s);
   for (const m of view.minions) if (onScreen(m.x, m.y)) list.push(m);
   for (const m of view.monsters) if ((!m.dead || anim(m).deadT != null && now - anim(m).deadT < 1) && onScreen(m.x, m.y)) list.push(m);
-  for (const h of view.heroes) if (onScreen(h.x, h.y) && (!h.dead || (anim(h).deadT != null && now - anim(h).deadT < 1.4))) list.push(h);
+  for (const h of view.heroes) if (onScreen(h.x, h.y) && visible(h) && (!h.dead || (anim(h).deadT != null && now - anim(h).deadT < 1.4))) list.push(h);
   for (const o of D.OBSTACLES) if (onScreen(o.x, o.y)) list.push(o);
   for (const u of view.minions) stepAnim(u, dt, view);
   for (const u of view.monsters) stepAnim(u, dt, view);
@@ -296,6 +310,8 @@ function draw(view, dt, opts) {
     drawUnit(u, player);
   }
 
+  // Grass fringe in front of anyone standing in a bush
+  for (const b of D.BUSHES) if (onScreen(b.x, b.y)) { upright(b.x, b.y); A.drawBush(ctx, b, 'top'); ctx.restore(); }
   // Projectiles
   for (const p of view.projs) if (onScreen(p.x, p.y)) drawProj(p);
   // Zones above ground (falling things)
@@ -347,6 +363,8 @@ function drawUnit(u, player) {
     ctx.fillStyle = g; ctx.fillRect(-30, -160, 60, 160);
   }
   if (!right) ctx.scale(-1, 1);
+  const ghost = u.kind === 'hero' && concealed(u);
+  if (ghost) ctx.globalAlpha = 0.55;
   if (u.kind === 'hero') {
     if (u.shield > 1) { A.glow(ctx, 0, -38 - (u.air || 0), 46, '#dff4ff', 0.35); }
     A.drawRig(ctx, u.def.look, p);
@@ -357,6 +375,7 @@ function drawUnit(u, player) {
   } else if (u.kind === 'monster') {
     A.drawMonster(ctx, u, now, p);
   }
+  ctx.globalAlpha = 1;
   ctx.restore();
 }
 
@@ -405,6 +424,11 @@ function drawBars(u, player, k, view) {
     ctx.strokeText(label, 0, y - 6 * k);
     ctx.fillStyle = mine ? '#c9ffc4' : 'rgba(255,255,255,0.92)';
     ctx.fillText(label, 0, y - 6 * k);
+    if (concealed(u)) {
+      ctx.font = `700 ${10 * k}px Barlow, system-ui, sans-serif`;
+      ctx.strokeText('HIDDEN', 0, y - 20 * k);
+      ctx.fillStyle = '#9be89a'; ctx.fillText('HIDDEN', 0, y - 20 * k);
+    }
   }
   ctx.restore();
 }
@@ -640,6 +664,7 @@ function drawAim(h, aim) {
 // Minimap
 // ---------------------------------------------------------------------------
 function drawMinimap(view) {
+  viewerTeam = view.player ? view.player.team : view.mirror ? 0 : -1;
   const mw = mini.width, mh = mini.height;
   if (!mw) return;
   mctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -668,7 +693,7 @@ function drawMinimap(view) {
     mctx.fillRect(m.x - 24, m.y - 24, 48, 48);
   }
   for (const h of view.heroes) {
-    if (h.dead) continue;
+    if (h.dead || !visible(h)) continue;
     mctx.fillStyle = D.TEAMS[h.team].color;
     mctx.beginPath(); mctx.arc(h.x, h.y, 95, 0, TAU); mctx.fill();
     mctx.lineWidth = 26; mctx.strokeStyle = h === player ? '#7be38a' : '#0b120d'; mctx.stroke();

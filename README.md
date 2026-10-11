@@ -46,7 +46,10 @@ The ultimate unlocks at level 4. Items are bought automatically from each hero's
 | Gold Lane | Bottom | Kestra (archer), Dax (gunslinger) |
 | Roam | Follows a lane | Gorr (tank), Mira (healer) |
 
-Every hero has a passive, two skills and an ultimate. The jungle has buff camps (Azure Wisp, Ember Brute),
+Every hero has a passive, two skills and an ultimate.
+
+**Bushes** line the lanes and the jungle. A hero inside one is invisible to the enemy team (and can't be
+targeted) until an enemy walks into the same bush or the hidden hero deals damage. Area skills still hit. The jungle has buff camps (Azure Wisp, Ember Brute),
 small camps, and two river bosses: the Tidewarden (2:00) and the Elder Wyrm (8:00).
 
 ## Code

@@ -168,7 +168,7 @@ function pickAt(x, y) {
     const d = Math.hypot(u.x - x, u.y - oy - y) - rr - tol;
     if (d <= 0 && d < bd) { bd = d; best = u; }
   };
-  for (const h of v.heroes) consider(h, 34, 34);
+  for (const h of v.heroes) if (!(h.hidden && h.hidden[me.team])) consider(h, 34, 34);
   for (const m of v.minions) consider(m, 14, m.r + 6);
   for (const m of v.monsters) consider(m, 24, m.r + 8);
   for (const s of v.structs) if (!s.guarded && !(LF.sim.G && v === LF.sim.G && !LF.sim.isTargetable(s))) consider(s, 50, s.r + 30);
@@ -244,7 +244,7 @@ function autoAim(key) {
     const s = d - bonus;
     if (s < bs) { bs = s; best = u; }
   };
-  for (const e of v.heroes) consider(e, 900 + (1 - e.hp / e.maxHp) * 300);
+  for (const e of v.heroes) if (!(e.hidden && e.hidden[h.team])) consider(e, 900 + (1 - e.hp / e.maxHp) * 300);
   if (!best && sk.type !== 'execute') { for (const m of v.monsters) consider(m, 100); for (const m of v.minions) consider(m, 0); }
   if (best) {
     const lead = sk.type === 'line' ? Math.hypot(best.x - h.x, best.y - h.y) / sk.speed : sk.type === 'circle' ? sk.delay * 0.7 : 0.2;

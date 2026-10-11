@@ -227,6 +227,8 @@ function heroBits(u) {
   if (u.dead) b |= 1; if (u.stunT > 0) b |= 2; if (u.rootT > 0) b |= 4; if (u.slowT > 0) b |= 8;
   for (const x of u.buffs) { if (x.id === 'azure') b |= 16; if (x.id === 'ember') b |= 32; }
   if (u.leap || u.dash) b |= 64;
+  if (u.hidden && u.hidden[0]) b |= 128;
+  if (u.hidden && u.hidden[1]) b |= 256;
   return b;
 }
 
@@ -347,6 +349,7 @@ function applyMain(V, g) {
     h.hp = a[2]; h.mana = a[3]; h.facing = a[4] / 10; h.level = a[5];
     h.dead = !!(bits & 1); h.stunT = bits & 2 ? 1 : 0; h.rootT = bits & 4 ? 1 : 0; h.slowT = bits & 8 ? 1 : 0;
     h.flags = (bits & 16 ? 1 : 0) | (bits & 32 ? 2 : 0);
+    h.hidden = [!!(bits & 128), !!(bits & 256)];
     h.respawn = a[7]; h.atkN = a[8]; h.castN = a[9]; h.castKey = KEYS[a[10]]; h.shield = a[11]; h.air = a[12];
     h.recall = a[13] >= 0 ? { t: a[13] / 10 } : null;
     h.cds = { s1: a[14] / 10, s2: a[15] / 10, ult: a[16] / 10 };

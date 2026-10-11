@@ -14,7 +14,7 @@ function think(h, G) {
   const ai = h.ai;
   const hp = h.hp / h.maxHp;
   const home = D.FOUNTAIN[h.team];
-  const enemies = G.heroes.filter(e => !e.dead && e.team !== h.team);
+  const enemies = G.heroes.filter(e => !e.dead && e.team !== h.team && LF.sim.seen(h.team, e));
   const allies = G.heroes.filter(a => !a.dead && a.team === h.team && a !== h);
   const atHome = dist(h, home) < home.r - 40;
 

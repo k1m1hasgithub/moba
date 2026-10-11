@@ -147,6 +147,58 @@ const OBSTACLES = (() => {
   return out;
 })();
 
+// Bushes: heroes inside are hidden from the enemy team. Placed beside the lanes and
+// in the jungle on the blue half, then mirrored.
+const BUSHES = (() => {
+  const rnd = mulberry32(4242);
+  const blue = [];
+  const clearOf = (x, y, r) => {
+    if (x < r + 40 || y > H - r - 40 || x > W - r - 40 || y < r + 40) return false;
+    if (y - x < r + 60) return false; // blue half, off the river centre
+    for (const o of OBSTACLES) if (Math.hypot(o.x - x, o.y - y) < o.r + r + 15) return false;
+    for (const c of CAMPS) if (Math.hypot(c.x - x, c.y - y) < r + 135) return false;
+    for (const f of FOUNTAIN) if (Math.hypot(f.x - x, f.y - y) < r + 700) return false;
+    for (const t of STRUCTS[0].concat(STRUCTS[1])) if (Math.hypot(t.x - x, t.y - y) < r + 130) return false;
+    for (const b of blue) {
+      if (Math.hypot(b.x - x, b.y - y) < b.r + r + 140) return false;
+      const m = mirror(b);
+      if (Math.hypot(m.x - x, m.y - y) < b.r + r + 140) return false;
+    }
+    return true;
+  };
+  // Beside each lane, both sides
+  for (const id of LANE_IDS) {
+    const L = LANES[id];
+    for (let f = 0.14; f < 0.49; f += 0.025) {
+      for (const side of [-1, 1]) {
+        for (const dist of [230, 270]) {
+          const p = laneAt(L, L.len * f), off = dist * side, r = 100 + rnd() * 20;
+          const x = p.x - p.dy * off, y = p.y + p.dx * off;
+          if (clearOf(x, y, r)) { blue.push({ x, y, r, seed: (rnd() * 1e6) | 0 }); break; }
+        }
+      }
+    }
+  }
+  // Jungle
+  const laneCount = blue.length;
+  for (let i = 0; i < 6000 && blue.length < laneCount + 6; i++) {
+    const x = 300 + rnd() * (W - 600), y = 300 + rnd() * (H - 600), r = 100 + rnd() * 30;
+    let nearLane = false;
+    for (const id of LANE_IDS) if (laneProject(LANES[id], x, y).d < r + 140) nearLane = true;
+    if (!nearLane && clearOf(x, y, r)) blue.push({ x, y, r, seed: (rnd() * 1e6) | 0 });
+  }
+  const out = [];
+  for (const b of blue) { out.push(b); out.push(Object.assign({}, b, mirror(b), { seed: b.seed + 11 })); }
+  return out;
+})();
+function bushAt(x, y) {
+  for (let i = 0; i < BUSHES.length; i++) {
+    const b = BUSHES[i], dx = x - b.x, dy = y - b.y;
+    if (dx * dx + dy * dy < b.r * b.r) return i;
+  }
+  return -1;
+}
+
 // ---------------------------------------------------------------------------
 // Roles
 // ---------------------------------------------------------------------------
@@ -347,7 +399,7 @@ const DIFFICULTY = {
 
 LF.data = {
   W, H, BLUE, RED, NEUTRAL, TAU, TEAMS, mirror, LANES, LANE_IDS, laneAt, laneProject,
-  FOUNTAIN, CORE_POS, STRUCTS, STRUCT_STATS, MONSTERS, CAMPS, OBSTACLES, ROLES, ROLE_INDEX,
+  FOUNTAIN, CORE_POS, STRUCTS, STRUCT_STATS, MONSTERS, CAMPS, OBSTACLES, BUSHES, bushAt, ROLES, ROLE_INDEX,
   ITEMS, ITEM, ITEM_INDEX, HEROES, HERO, HERO_INDEX, MINION, ULT_LEVEL, MAX_LEVEL, xpToNext, DIFFICULTY, mulberry32,
 };
 })(window.LF);

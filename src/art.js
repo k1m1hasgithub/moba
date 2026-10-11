@@ -778,8 +778,54 @@ function portrait(heroId, size, team) {
   return url;
 }
 
+// ---------------------------------------------------------------------------
+// Bushes: a leafy base drawn under units and a fringe of grass drawn over them
+// ---------------------------------------------------------------------------
+const bushCache = new Map();
+function bushSprites(b) {
+  let s = bushCache.get(b);
+  if (s) return s;
+  const R = b.r, size = Math.ceil(R * 2 + 70), c0 = size / 2;
+  const rnd = D.mulberry32(b.seed);
+  const base = document.createElement('canvas'); base.width = base.height = size;
+  const g = base.getContext('2d');
+  g.fillStyle = 'rgba(0,0,0,0.28)'; ellipse(g, c0 + 6, c0 + 8, R * 1.02, R * 0.92); g.fill();
+  g.fillStyle = '#163a1d'; ellipse(g, c0, c0, R * 0.98, R * 0.9); g.fill();
+  const greens = ['#1d4a24', '#22552a', '#296230', '#2f6d35', '#377a3b'];
+  for (let i = 0; i < 90; i++) {
+    const a = rnd() * TAU, d = Math.sqrt(rnd()) * R * 0.92;
+    const x = c0 + Math.cos(a) * d, y = c0 + Math.sin(a) * d * 0.9;
+    const shade = Math.min(4, Math.floor((1 - d / R) * 3 + rnd() * 2));
+    g.fillStyle = greens[shade];
+    for (let k = 0; k < 3; k++) { ellipse(g, x + (rnd() - 0.5) * 10, y + (rnd() - 0.5) * 8, 7 + rnd() * 6, 4 + rnd() * 3, rnd() * Math.PI); g.fill(); }
+  }
+  for (let i = 0; i < 30; i++) {
+    const a = rnd() * TAU, d = Math.sqrt(rnd()) * R * 0.8;
+    g.fillStyle = 'rgba(150,210,120,0.35)';
+    ellipse(g, c0 + Math.cos(a) * d, c0 + Math.sin(a) * d * 0.9, 3, 1.6, rnd() * Math.PI); g.fill();
+  }
+  const top = document.createElement('canvas'); top.width = top.height = size;
+  const t = top.getContext('2d');
+  t.lineCap = 'round';
+  for (let i = 0; i < 70; i++) {
+    const a = 0.08 * Math.PI + rnd() * 0.84 * Math.PI;
+    const x = c0 + Math.cos(a) * R * (0.82 + rnd() * 0.18), y = c0 + Math.sin(a) * R * 0.9 * (0.85 + rnd() * 0.15);
+    const h = 16 + rnd() * 22, lean = (rnd() - 0.5) * 12;
+    t.strokeStyle = rnd() < 0.5 ? '#2c6a30' : '#3f8a3f';
+    t.lineWidth = 3 + rnd() * 2;
+    t.beginPath(); t.moveTo(x, y); t.quadraticCurveTo(x + lean * 0.3, y - h * 0.6, x + lean, y - h); t.stroke();
+  }
+  s = { base, top, size };
+  bushCache.set(b, s);
+  return s;
+}
+function drawBush(ctx, b, layer) {
+  const s = bushSprites(b);
+  ctx.drawImage(layer === 'top' ? s.top : s.base, -s.size / 2, -s.size / 2);
+}
+
 LF.art = {
-  drawRig, drawMonster, drawTower, drawCore, drawObstacle, drawSiege, getMinionLook, buildTerrain, portrait,
+  drawRig, drawMonster, drawTower, drawCore, drawObstacle, drawSiege, getMinionLook, buildTerrain, portrait, drawBush,
   glow, circle, ellipse, poly, star, rrect, diamond, mix, shade, rgba, TERRAIN_SCALE,
 };
 })(window.LF);
