@@ -251,7 +251,17 @@ function mpStatus(tr) {
     : tr.kind === 'local' ? 'Only other tabs on this device can see your lobby. To play across devices, open the game from its claude.ai link or run server.js.'
       : 'Anyone connected to this server can see your lobby.';
 }
+// "Online · 3 here" — how many people currently have the game's multiplayer screen reachable.
+function netCount(tr) {
+  if (!tr) return;
+  const el = $('netStatus');
+  const n = tr.lobby.peers().length;
+  const live = tr.lobby.connected ? tr.lobby.connected() : true;
+  el.textContent = `${tr.label} · ${live ? `${n} here` : 'connecting…'}`;
+  el.title = 'Number of open game pages that can see each other\'s lobbies, including yours.';
+}
 function renderLobbyList(tr) {
+  netCount(tr);
   const list = $('lobbyList');
   if (!tr) { list.innerHTML = '<p class="empty">No connection.</p>'; return; }
   const rows = tr.lobby.peers().filter(p => !p.isMe && p.presence && p.presence.lb && typeof p.presence.lb === 'object');

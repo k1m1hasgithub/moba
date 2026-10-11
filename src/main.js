@@ -144,7 +144,7 @@ async function createLobby() {
     mode = 'lobby';
     LF.ui.openLobby(party);
   } catch (e) {
-    $('mpHint').textContent = 'Could not create the lobby. Try again in a moment.';
+    $('mpHint').textContent = `Could not create the lobby (${(e && (e.code || e.message)) || 'unknown error'}). Try again in a moment.`;
   } finally { $('createLobby').disabled = false; }
 }
 
@@ -171,7 +171,8 @@ async function joinLobby(code) {
     mode = 'lobby';
     if (p.L.ph === 'game') startClient(); else LF.ui.openLobby(p);
   } catch (e) {
-    $('mpHint').textContent = e && e.message === 'no-connection' ? 'Could not connect to the lobby service. Reload the page and try again.' : 'Could not join that lobby.';
+    $('mpHint').textContent = e && e.message === 'no-connection' ? 'Could not connect to the lobby service. Reload the page and try again.'
+      : `Could not join that lobby (${(e && (e.code || e.message)) || 'unknown error'}).`;
   }
 }
 
