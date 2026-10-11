@@ -18,7 +18,6 @@ const S = {
   build: null,              // the player's own build for this match (item ids), null = recommended
   shop: [], netShop: [], shopSeq: 0,
   pin: null, pinSeq: 0, pinSent: 0, // the one item to buy as soon as it's affordable
-  autoBuy: (() => { try { return localStorage.getItem('lf-autobuy') === '1'; } catch (e) { return false; } })(),
 };
 let canvas, ui = {};
 
@@ -351,7 +350,6 @@ function applyLocal(h) {
   while (S.casts.length) I.casts.push(S.casts.shift());
   while (S.shop.length) I.shop.push(S.shop.shift());
   if (S.pinSent !== S.pinSeq) { S.pinSent = S.pinSeq; I.pin = S.pin || ''; }
-  if (S.autoBuy !== h.autoBuy) I.autoBuy = S.autoBuy;
 }
 
 // Build the compact input object a client sends to the host.
@@ -368,7 +366,6 @@ function toNet() {
     c: S.netCasts.slice(),
     sh: S.netShop.slice(),
     pn: [S.pinSeq, S.pin ? D.ITEM_INDEX[S.pin] : -1],
-    ab: S.autoBuy ? 1 : 0,
     bd: S.build ? S.build.map(id => D.ITEM_INDEX[id]) : 0,
   };
 }
@@ -379,11 +376,6 @@ function shop(op, id) {
   S.shop.push({ op, id });
   S.netShop.push([S.shopSeq, op === 'sell' ? 2 : 1, D.ITEM_INDEX[id]]);
   if (S.netShop.length > 6) S.netShop.shift();
-}
-// Auto-buy the whole build (remembered in this browser).
-function setAutoBuy(on) {
-  S.autoBuy = !!on;
-  try { localStorage.setItem('lf-autobuy', on ? '1' : '0'); } catch (e) { /* ignore */ }
 }
 // Pin one item to be bought automatically when affordable (null clears it).
 function setPin(id) {
@@ -419,5 +411,5 @@ function aimState() {
   return S.aim.x !== undefined ? S.aim : null;
 }
 
-LF.input = { init, applyLocal, toNet, setView, enable, reset, shop, setPin, setAutoBuy, setBuild, aimState, hoverTarget, get click() { return S.click; }, state: S };
+LF.input = { init, applyLocal, toNet, setView, enable, reset, shop, setPin, setBuild, aimState, hoverTarget, get click() { return S.click; }, state: S };
 })(window.LF);
