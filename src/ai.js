@@ -1,5 +1,6 @@
-// Lanefall: bot brains. Each bot plays its role, fights when the odds look good,
-// retreats and recalls when hurt.
+// Lanefall: bot brains. Each bot plays its role, fights when the odds look good, retreats and recalls
+// when hurt, dodges skillshots and kites. Each team also makes shared plans: get ready for a boss,
+// take it, contest the enemy's attempt, push with the Lord buff, and group up late in the game.
 'use strict';
 (function (LF) {
 const D = LF.data;
@@ -17,11 +18,16 @@ function think(h, G) {
   const enemies = G.heroes.filter(e => !e.dead && e.team !== h.team && LF.sim.seen(h.team, e));
   const allies = G.heroes.filter(a => !a.dead && a.team === h.team && a !== h);
   const atHome = dist(h, home) < home.r - 40;
+  // A little personality, so bots don't all play the same.
+  const me = ai.p || (ai.p = { brave: 0.85 + Math.random() * 0.3, roams: Math.random() < 0.6 });
+  const plan = teamPlan(G, h.team);
 
   if (h.recall) {
     if (enemies.some(e => dist(e, h) < 650)) h.recall = null;
     else return;
   }
+  if (smiteSteal(h, G, enemies)) return;
+  if (dodge(h, G, diff)) return;
   // Regen (works on the move) when hurt and no enemy hero is close.
   const safe = !enemies.some(e => dist(e, h) < 900) && G.t - h.lastCombat > 2;
   if (!h.regenCh && safe && !atHome && hp < 0.6 && h.cds.rg <= 0 && Math.random() < diff.react) sim.cast(h, 'rg', h.x, h.y);
@@ -47,12 +53,15 @@ function think(h, G) {
     }
     const mine = power([h].concat(allies.filter(a => dist(a, h) < 850)));
     const theirs = power(enemies.filter(e => target ? dist(e, target) < 850 : dist(e, h) < 850));
+    // Fighting over a boss is worth more risk.
+    const atObjective = plan.boss && (plan.call === 'contest' || plan.call === 'take') && plan.members.has(h.seat) && dist(h, plan.boss.home) < 1300;
     if (target) {
       const tPct = target.hp / target.maxHp;
-      const engage = mine >= theirs * diff.brave || (tPct < 0.25 && hp > 0.4);
+      const engage = mine >= theirs * diff.brave * me.brave * (atObjective ? 0.8 : 1) || (tPct < 0.25 && hp > 0.4);
       if (engage) {
         ai.mode = 'fight';
         h.attackTarget = target; h.moveTo = null;
+        kite(h, G, target, diff);
         useSpell(h, G, 'fight', target, diff);
         useSkills(h, G, 'fight', target, diff);
         return;
@@ -73,6 +82,9 @@ function think(h, G) {
   }
   ai.mode = 'farm';
 
+  // ----- Team plans: bosses, Lord pushes, late-game grouping -----
+  if (objective(h, G, plan, diff)) return;
+
   // ----- Defend a structure under siege -----
   for (const s of G.structs) {
     if (s.dead || s.team !== h.team) continue;
@@ -88,6 +100,7 @@ function think(h, G) {
   const role = h.role;
   if (role === 1) { if (jungle(h, G, enemies, diff)) return; }
   else if (role === 4) { if (roam(h, G, allies, diff)) return; }
+  else if (role === 2 && me.roams && gank(h, G, enemies, 1500, 0.45)) return;
   if (role === 4 || role === 1) {
     if (bossCheck(h, G, enemies, diff)) return;
   }
@@ -321,13 +334,8 @@ function jungle(h, G, enemies, diff) {
     }
     ai.camp = camp;
   }
-  // Gank: a nearby enemy laner who is hurt, or any enemy close to us.
-  const prey = enemies.filter(e => dist(e, h) < 1600 && e.hp / e.maxHp < 0.65 && !enemyTowerCovering(e, G, h.team));
-  if (prey.length && h.level >= 3 && h.hp / h.maxHp > 0.55) {
-    const t = prey.reduce((a, b) => (dist(a, h) < dist(b, h) ? a : b));
-    goTo(h, t.x, t.y);
-    return true;
-  }
+  // Gank: a nearby enemy laner who is hurt.
+  if (h.level >= 3 && gank(h, G, enemies, 1600, 0.65)) return true;
   if (camp) {
     if (dist(h, camp) > 380) goTo(h, camp.home.x, camp.home.y);
     else { h.attackTarget = camp; h.moveTo = null; useSpell(h, G, 'farm', camp, diff); useSkills(h, G, 'farm', camp, diff); }
@@ -382,5 +390,163 @@ function roam(h, G, allies, diff) {
   return true;
 }
 
-LF.ai = { think };
+// ---------------------------------------------------------------------------
+// Human touches
+// ---------------------------------------------------------------------------
+// Go after a hurt enemy hero within `radius` who isn't under their tower.
+function gank(h, G, enemies, radius, below) {
+  if (h.hp / h.maxHp < 0.55) return false;
+  const prey = enemies.filter(e => dist(e, h) < radius && e.hp / e.maxHp < below && !enemyTowerCovering(e, G, h.team));
+  if (!prey.length) return false;
+  const t = prey.reduce((a, b) => (dist(a, h) < dist(b, h) ? a : b));
+  goTo(h, t.x, t.y);
+  return true;
+}
+
+// Sidestep a skillshot flying at us.
+function dodge(h, G, diff) {
+  if (Math.random() > (diff.dodge || 0)) return false;
+  for (const p of G.projs) {
+    if (p.kind !== 'line' || p.team === h.team) continue;
+    const sp = Math.hypot(p.vx, p.vy) || 1, ux = p.vx / sp, uy = p.vy / sp;
+    const dx = h.x - p.x, dy = h.y - p.y;
+    const along = dx * ux + dy * uy;
+    if (along < 0 || along > 520) continue;
+    const side = dx * uy - dy * ux;
+    if (Math.abs(side) > p.width / 2 + h.r + 12) continue;
+    const s = side >= 0 ? 1 : -1;
+    h.dodgeTo = { x: h.x + uy * s * 150, y: h.y - ux * s * 150 };
+    h.dodgeUntil = G.t + 0.35;
+    return true;
+  }
+  return false;
+}
+
+// Ranged heroes step back from melee attackers between shots.
+function kite(h, G, t, diff) {
+  h.kiteTo = null;
+  if (h.def.attack.melee || t.kind !== 'hero' || !t.def.attack.melee) return;
+  if (Math.random() > (diff.kite || 0) || dist(h, t) > h.range * 0.8) return;
+  const home = D.FOUNTAIN[h.team];
+  const a = Math.atan2(h.y - t.y, h.x - t.x), b = Math.atan2(home.y - h.y, home.x - h.x);
+  const dir = Math.atan2(Math.sin(a) * 2 + Math.sin(b), Math.cos(a) * 2 + Math.cos(b));
+  h.kiteTo = { x: h.x + Math.cos(dir) * 140, y: h.y + Math.sin(dir) * 140 };
+  h.kiteUntil = G.t + 0.6;
+}
+
+// Last-second Smite on a boss or buff an enemy is fighting for, or any boss we're taking.
+function smiteSteal(h, G, enemies) {
+  if (h.spell !== 'smite' || h.cds.sp > 0) return false;
+  const dmg = 450 + 40 * h.level;
+  for (const m of G.monsters) {
+    if (m.dead || m.hp > dmg || LF.sim.gap(h, m) > 300) continue;
+    const def = D.MONSTERS[m.mtype];
+    if (!m.boss && !def.buff) continue;
+    if (m.boss || enemies.some(e => dist(e, m) < 700)) { LF.sim.cast(h, 'sp', m.x, m.y); return true; }
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Team plans, refreshed about once a second per team.
+//   prep    : a boss spawns soon; the jungler and roamer (and mid for the Lord) wait by the pit
+//   take    : the boss is up and it's safe enough; send a group to kill it
+//   contest : the enemy is on the boss; everyone healthy and close enough goes to fight them for it
+//   push    : we have the Lord buff; push a lane together until one tower falls
+//   group   : from 14:00; group up and push one lane, the EXP laner keeps splitting
+// ---------------------------------------------------------------------------
+function teamPlan(G, team) {
+  const P = G.aiPlan || (G.aiPlan = [{ t: -9 }, { t: -9 }]);
+  if (G.t - P[team].t < 1) return P[team];
+  const plan = { t: G.t, call: null, boss: null, members: new Set(), lane: null };
+  P[team] = plan;
+  const allies = G.heroes.filter(a => !a.dead && a.team === team);
+  const foesAlive = G.heroes.filter(e => !e.dead && e.team !== team);
+  const seenFoes = foesAlive.filter(e => LF.sim.seen(team, e));
+  if (!allies.length) return plan;
+  const avgLvl = allies.reduce((s, a) => s + a.level, 0) / allies.length;
+  const healthy = (a, min) => a.hp / a.maxHp > min && a.ai.state !== 'heal';
+  const bosses = G.monsters.filter(m => m.boss);
+  const boss = bosses.find(m => !m.dead);
+  const pit = (boss || bosses[0]).home;
+  const near = (list, r) => list.filter(u => dist(u, pit) < r);
+  const byDist = list => list.slice().sort((a, b) => dist(a, pit) - dist(b, pit));
+
+  if (boss) {
+    const lord = boss.mtype === 'wyrm';
+    const foesAtPit = near(seenFoes, 950);
+    const enemyOnIt = foesAtPit.length && (boss.hp < boss.maxHp * 0.97 || (boss.target && boss.target.kind === 'hero' && boss.target.team !== team));
+    if (enemyOnIt) {
+      const can = allies.filter(a => healthy(a, 0.35) && dist(a, pit) < 3400);
+      if (can.length >= 2 && can.length >= foesAtPit.length - (lord ? 0 : 1)) {
+        plan.call = 'contest'; plan.boss = boss;
+        can.forEach(a => plan.members.add(a.seat));
+      }
+    } else {
+      const outnumbered = near(seenFoes, 1500).length > near(allies, 1500).length + 1;
+      const readyT = !lord && avgLvl >= 3 && !outnumbered;
+      const readyL = lord && avgLvl >= 9 && allies.length >= 3 && (allies.length >= foesAlive.length || foesAlive.length <= 3) && !outnumbered;
+      if (readyT || readyL) {
+        plan.call = 'take'; plan.boss = boss;
+        const crew = lord
+          ? allies.filter(a => healthy(a, 0.45) && dist(a, pit) < 4200)
+          : allies.filter(a => healthy(a, 0.45) && (a.role === 1 || a.role === 4)).concat(byDist(allies.filter(a => healthy(a, 0.5) && (a.role === 0 || a.role === 2) && dist(a, pit) < 2600)).slice(0, 1));
+        if (crew.length >= (lord ? 3 : 2)) crew.forEach(a => plan.members.add(a.seat));
+        else plan.call = null;
+      }
+    }
+  } else {
+    const soon = bosses.filter(m => m.respawnAt !== Infinity && m.respawnAt - G.t < 22 && m.respawnAt - G.t > -1 &&
+      !(D.MONSTERS[m.mtype].until && m.respawnAt >= D.MONSTERS[m.mtype].until)).sort((a, b) => a.respawnAt - b.respawnAt)[0];
+    if (soon && avgLvl >= (soon.mtype === 'wyrm' ? 8 : 2)) {
+      plan.call = 'prep'; plan.boss = soon;
+      allies.filter(a => healthy(a, 0.4) && (a.role === 1 || a.role === 4 || (soon.mtype === 'wyrm' && a.role === 2))).forEach(a => plan.members.add(a.seat));
+    }
+  }
+  // A Lord push aims for one tower: once a tower falls during the buff, the team goes back to normal play.
+  const towersLeft = G.structs.filter(st => !st.dead && st.team !== team && st.kind !== 'core').length;
+  const LP = G.aiLordPush || (G.aiLordPush = [{ until: 0 }, { until: 0 }]);
+  if (G.teamBuff[team] > G.t && LP[team].until !== G.teamBuff[team]) LP[team] = { until: G.teamBuff[team], towers: towersLeft };
+  const lordPush = G.teamBuff[team] > G.t && towersLeft >= LP[team].towers;
+  if (!plan.call && (lordPush || G.t > 840)) {
+    plan.call = lordPush ? 'push' : 'group';
+    plan.lane = pushLane(G, team, allies);
+    allies.filter(a => healthy(a, 0.45) && (plan.call === 'push' || a.role !== 0)).forEach(a => plan.members.add(a.seat));
+  }
+  return plan;
+}
+// The lane to push together: the one whose next enemy tower is closest to falling, else mid.
+function pushLane(G, team, allies) {
+  let best = 'mid', score = Infinity;
+  for (const id of ['top', 'mid', 'bot']) {
+    const towers = G.structs.filter(s => !s.dead && s.team !== team && s.lane === id);
+    if (!towers.length) return id;
+    const s = towers.length * 2 + Math.min(...towers.map(t => t.hp / t.maxHp)) - allies.filter(a => D.laneProject(D.LANES[id], a.x, a.y).d < 500).length * 0.3;
+    if (s < score) { score = s; best = id; }
+  }
+  return best;
+}
+function objective(h, G, plan, diff) {
+  if (!plan.call || !plan.members.has(h.seat) || h.ai.state === 'heal') return false;
+  const m = plan.boss;
+  if (plan.call === 'prep') {
+    // Wait just outside the pit on our side.
+    const home = D.FOUNTAIN[h.team], a = Math.atan2(home.y - m.home.y, home.x - m.home.x);
+    const spot = { x: m.home.x + Math.cos(a) * 520 + (h.seat % 3 - 1) * 60, y: m.home.y + Math.sin(a) * 520 };
+    if (dist(h, spot) > 120) goTo(h, spot.x, spot.y); else { h.moveTo = null; h.attackTarget = null; }
+    return true;
+  }
+  if (plan.call === 'take' || plan.call === 'contest') {
+    if (m.dead) return false;
+    const reach = h.range + m.r + (h.def.attack.melee ? 20 : 60);
+    if (dist(h, m) > reach + 200) goTo(h, m.x, m.y);
+    else { h.attackTarget = m; h.moveTo = null; useSpell(h, G, 'farm', m, diff); useSkills(h, G, 'farm', m, diff); }
+    return true;
+  }
+  // push / group
+  lane(h, G, plan.lane, diff);
+  return true;
+}
+
+LF.ai = { think, teamPlan };
 })(window.LF);

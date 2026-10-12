@@ -484,9 +484,10 @@ const ULT_LEVEL = 4, MAX_LEVEL = 15;
 const xpToNext = lvl => 100 + 60 * lvl;
 
 const DIFFICULTY = {
-  easy: { name: 'Easy', think: 0.45, aimErr: 110, brave: 1.35, react: 0.6 },
-  normal: { name: 'Normal', think: 0.28, aimErr: 50, brave: 1.0, react: 0.85 },
-  hard: { name: 'Hard', think: 0.16, aimErr: 18, brave: 0.85, react: 1 },
+  // dodge: chance to sidestep a skillshot; kite: chance a ranged bot steps back between attacks.
+  easy: { name: 'Easy', think: 0.45, aimErr: 110, brave: 1.35, react: 0.6, dodge: 0.12, kite: 0.2 },
+  normal: { name: 'Normal', think: 0.28, aimErr: 50, brave: 1.0, react: 0.85, dodge: 0.4, kite: 0.6 },
+  hard: { name: 'Hard', think: 0.16, aimErr: 18, brave: 0.85, react: 1, dodge: 0.7, kite: 0.9 },
 };
 
 LF.data = {

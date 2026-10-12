@@ -838,7 +838,7 @@ function spawnMonster(m) {
 // until a Tidewarden still standing in the pit has been killed.
 function pitFree(m) {
   const def = D.MONSTERS[m.mtype];
-  if (def.until && G.t >= def.until) return false;
+  if (def.until && G.t >= def.until - 20) return false; // don't pop up right before the Lord
   if (def.boss) return !G.monsters.some(o => o !== m && o.boss && !o.dead && dist(o, m.home) < 400);
   return true;
 }
@@ -1117,10 +1117,15 @@ function controlBot(h, dt) {
     LF.ai.think(h, G);
     if (h.dead || h.leap || h.dash || h.stunT > 0) return;
   }
+  // Sidestep a skillshot the brain spotted.
+  if (h.dodgeTo && G.t < h.dodgeUntil && h.rootT <= 0) { moveToward(h, h.dodgeTo.x, h.dodgeTo.y, dt); return; }
   const t = h.attackTarget;
   if (t && validFoe(h, t)) {
-    if (gap(h, t) <= h.range) heroAttack(h, t);
-    else if (h.rootT <= 0) moveToward(h, t.x, t.y, dt);
+    if (gap(h, t) <= h.range) {
+      // Kiting: between shots, step back from a melee attacker.
+      if (h.atkCd > 0.15 && h.kiteTo && G.t < h.kiteUntil && h.rootT <= 0) moveToward(h, h.kiteTo.x, h.kiteTo.y, dt);
+      else heroAttack(h, t);
+    } else if (h.rootT <= 0) moveToward(h, t.x, t.y, dt);
   } else {
     h.attackTarget = null;
     if (h.moveTo && h.rootT <= 0) { if (moveToward(h, h.moveTo.x, h.moveTo.y, dt)) h.moveTo = null; }
