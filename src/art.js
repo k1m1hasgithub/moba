@@ -880,22 +880,109 @@ function drawObstacle(ctx, o, t) {
     ctx.fillStyle = '#4a3322'; ctx.fillRect(-7, -o.r * 0.6, 14, o.r * 0.6);
     const n = 3 + (rnd() * 3 | 0);
     const blobs = [];
-    for (let i = 0; i < n; i++) blobs.push([(rnd() - 0.5) * o.r * 0.9, -o.r * 0.9 - rnd() * o.r * 0.5, o.r * (0.45 + rnd() * 0.3)]);
+    const big = o.wall !== undefined ? 1.18 : 1;
+    for (let i = 0; i < n; i++) blobs.push([(rnd() - 0.5) * o.r * 1.1 * big, -o.r * 0.9 - rnd() * o.r * 0.5, o.r * (0.5 + rnd() * 0.3) * big]);
+    for (const [bx, by, br] of blobs) { ctx.fillStyle = '#0b2410'; circle(ctx, bx, by + 2, br + 5.5); ctx.fill(); }
     const sway = Math.sin(t * 0.8 + o.seed) * 1.5;
     for (const [bx, by, br] of blobs) { ctx.fillStyle = '#183a20'; circle(ctx, bx + sway, by + 4, br + 3); ctx.fill(); }
     for (const [bx, by, br] of blobs) { ctx.fillStyle = '#245a2c'; circle(ctx, bx + sway, by, br); ctx.fill(); }
     for (const [bx, by, br] of blobs) { ctx.fillStyle = '#2f7236'; circle(ctx, bx + sway - br * 0.25, by - br * 0.3, br * 0.55); ctx.fill(); }
   } else {
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(ctx, 6, 4, o.r * 1.05, o.r * 0.45); ctx.fill();
-    const n = 7;
-    ctx.fillStyle = '#5d6168';
-    ctx.beginPath();
-    for (let i = 0; i < n; i++) { const a = Math.PI + i / (n - 1) * Math.PI, rr = o.r * (0.8 + rnd() * 0.25); ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr * 0.9 - o.r * 0.1); }
-    ctx.lineTo(o.r * 0.9, 0); ctx.lineTo(-o.r * 0.9, 0); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#7b8088';
-    ctx.beginPath(); ctx.moveTo(-o.r * 0.6, -o.r * 0.4); ctx.lineTo(-o.r * 0.1, -o.r * 0.85); ctx.lineTo(o.r * 0.3, -o.r * 0.55); ctx.lineTo(-o.r * 0.2, -o.r * 0.25); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#4f7a3a'; ellipse(ctx, o.r * 0.3, -o.r * 0.15, o.r * 0.3, o.r * 0.12); ctx.fill();
+    drawRock(ctx, o, rnd);
   }
+}
+
+// Walls drawn as one shape under the units: a stone ridge (outline, body, lit top) for rock walls and
+// a shaded forest floor for tree lines. `up` is the screen-up direction in world space (the red
+// team's view is flipped), so the lit top always faces up on screen.
+function wallPath(ctx, pts, ox, oy) {
+  ctx.beginPath();
+  pts.forEach((p, i) => (i ? ctx.lineTo(p.x + ox, p.y + oy) : ctx.moveTo(p.x + ox, p.y + oy)));
+  if (pts.length === 1) ctx.lineTo(pts[0].x + ox + 0.1, pts[0].y + oy);
+}
+function drawWallBase(ctx, run, up) {
+  const pts = run.pts, r = pts.reduce((s, p) => s + p.r, 0) / pts.length;
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (run.kind === 'tree') {
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = r * 2.9; wallPath(ctx, pts, 10, 12); ctx.stroke();
+    ctx.strokeStyle = '#102a14'; ctx.lineWidth = r * 2.6; wallPath(ctx, pts, 0, 0); ctx.stroke();
+    ctx.strokeStyle = '#163a1b'; ctx.lineWidth = r * 1.9; wallPath(ctx, pts, 0, 0); ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  const ux = up.x, uy = up.y;
+  ctx.strokeStyle = 'rgba(0,0,0,0.32)'; ctx.lineWidth = r * 2.3; wallPath(ctx, pts, 12, 14); ctx.stroke();
+  ctx.strokeStyle = '#25282e'; ctx.lineWidth = r * 2.15 + 5; wallPath(ctx, pts, 0, 0); ctx.stroke();
+  ctx.strokeStyle = '#4a4f58'; ctx.lineWidth = r * 2.15; wallPath(ctx, pts, 0, 0); ctx.stroke();
+  ctx.strokeStyle = '#646a74'; ctx.lineWidth = r * 1.6; wallPath(ctx, pts, ux * r * 0.22, uy * r * 0.22); ctx.stroke();
+  ctx.strokeStyle = '#7f8691'; ctx.lineWidth = r * 1.05; wallPath(ctx, pts, ux * r * 0.38, uy * r * 0.38); ctx.stroke();
+  ctx.strokeStyle = 'rgba(170,178,188,0.55)'; ctx.lineWidth = r * 0.35; wallPath(ctx, pts, ux * r * 0.55, uy * r * 0.55); ctx.stroke();
+  // Moss along the top and cracks down the sides.
+  const rnd = D.mulberry32(pts[0].seed);
+  for (const p of pts) {
+    if (rnd() < 0.55) { ctx.fillStyle = rnd() < 0.5 ? '#4f8a3a' : '#5f9c44'; ellipse(ctx, p.x + ux * r * 0.45 + (rnd() - 0.5) * r, p.y + uy * r * 0.45 + (rnd() - 0.5) * r * 0.4, r * (0.25 + rnd() * 0.2), r * 0.12, rnd() * Math.PI); ctx.fill(); }
+    ctx.strokeStyle = 'rgba(30,32,38,0.6)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(p.x - ux * r * 0.1, p.y - uy * r * 0.1); ctx.lineTo(p.x - ux * r * 0.55 + (rnd() - 0.5) * 12, p.y - uy * r * 0.55 + (rnd() - 0.5) * 12); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Rocks: a cluster of faceted boulders, lit from the upper left, with moss on top and pebbles around.
+function boulder(ctx, x, y, r, rnd, tint) {
+  const n = 7 + (rnd() * 3 | 0), pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI + i / (n - 1) * Math.PI, rr = r * (0.82 + rnd() * 0.22);
+    pts.push([x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.95]);
+  }
+  pts.push([x + r * 0.95, y + r * 0.12], [x + r * 0.5, y + r * 0.32], [x - r * 0.45, y + r * 0.3], [x - r * 0.95, y + r * 0.1]);
+  const path = () => { ctx.beginPath(); pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py))); ctx.closePath(); };
+  // body
+  const gr = ctx.createLinearGradient(x - r, y - r, x + r * 0.8, y + r * 0.4);
+  gr.addColorStop(0, shade(tint, 0.18)); gr.addColorStop(0.55, tint); gr.addColorStop(1, shade(tint, -0.42));
+  path(); ctx.fillStyle = gr; ctx.fill();
+  // facets: a lit top plane and a shadowed right side
+  ctx.save(); path(); ctx.clip();
+  ctx.fillStyle = shade(tint, 0.32);
+  ctx.beginPath(); ctx.moveTo(x - r * 0.7, y - r * 0.35); ctx.lineTo(x - r * 0.15, y - r * 0.92); ctx.lineTo(x + r * 0.45, y - r * 0.7); ctx.lineTo(x + r * 0.1, y - r * 0.2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = shade(tint, -0.3);
+  ctx.beginPath(); ctx.moveTo(x + r * 0.1, y - r * 0.2); ctx.lineTo(x + r * 0.45, y - r * 0.7); ctx.lineTo(x + r, y - r * 0.1); ctx.lineTo(x + r, y + r * 0.4); ctx.lineTo(x + r * 0.2, y + r * 0.4); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = shade(tint, -0.55);
+  ctx.fillRect(x - r, y + r * 0.08, r * 2, r * 0.4);
+  // cracks
+  ctx.strokeStyle = shade(tint, -0.6); ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(x - r * 0.2, y - r * 0.55); ctx.lineTo(x - r * 0.05, y - r * 0.3); ctx.lineTo(x - r * 0.25, y - r * 0.05); ctx.stroke();
+  // moss cap
+  ctx.fillStyle = '#4f8a3a';
+  ellipse(ctx, x - r * 0.25, y - r * 0.78, r * 0.42, r * 0.16, -0.25); ctx.fill();
+  ctx.fillStyle = '#6aa848';
+  ellipse(ctx, x - r * 0.32, y - r * 0.84, r * 0.24, r * 0.08, -0.25); ctx.fill();
+  ctx.restore();
+  // outline
+  path(); ctx.strokeStyle = '#25282e'; ctx.lineWidth = 2.6; ctx.stroke();
+}
+function drawRock(ctx, o, rnd) {
+  const r = o.r;
+  if (o.wall !== undefined) {
+    // A capstone on a rock ridge: the ridge itself is drawn by drawWallBase.
+    const tint = ['#7d8490', '#848a94', '#767d88'][o.seed % 3];
+    boulder(ctx, (rnd() - 0.5) * r * 0.3, -r * 0.35, r * (0.62 + rnd() * 0.2), rnd, tint);
+    if (rnd() < 0.45) boulder(ctx, r * (rnd() < 0.5 ? -0.45 : 0.45), -r * 0.05, r * 0.32, rnd, shade(tint, -0.08));
+    return;
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.32)'; ellipse(ctx, 8, 6, r * 1.15, r * 0.48); ctx.fill();
+  const tint = ['#7d8490', '#857c70', '#78828a'][(rnd() * 3) | 0];
+  // a smaller stone behind, the main boulder, and one in front
+  boulder(ctx, r * 0.55, -r * 0.05, r * 0.5, rnd, shade(tint, -0.08));
+  boulder(ctx, -r * 0.08, 0, r * 0.85, rnd, tint);
+  boulder(ctx, -r * 0.62, r * 0.18, r * 0.36, rnd, shade(tint, 0.05));
+  // pebbles and a tuft of grass at the foot
+  for (let i = 0; i < 4; i++) {
+    const px = (rnd() - 0.5) * r * 1.9, py = r * (0.25 + rnd() * 0.2);
+    ctx.fillStyle = shade(tint, -0.2); ellipse(ctx, px, py, 4 + rnd() * 4, 3 + rnd() * 2); ctx.fill();
+    ctx.strokeStyle = '#25282e'; ctx.lineWidth = 1; ctx.stroke();
+  }
+  ctx.strokeStyle = '#3f7a34'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+  for (let i = 0; i < 6; i++) { const gx = r * (0.35 + rnd() * 0.5) * (i % 2 ? 1 : -1), gy = r * 0.3; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + (rnd() - 0.5) * 6, gy - 8 - rnd() * 8); ctx.stroke(); }
 }
 
 // ---------------------------------------------------------------------------
@@ -1106,53 +1193,115 @@ function portrait(heroId, size, team) {
 }
 
 // ---------------------------------------------------------------------------
-// Bushes: a leafy base drawn under units and a fringe of grass drawn over them
+// Bushes: a long, lobed patch of leaves drawn under units, and a fringe of tall grass and broad
+// leaves along its near (screen-bottom) edge drawn over them. Sprites are built in screen
+// orientation, once for the normal view and once for the flipped (red) view.
 // ---------------------------------------------------------------------------
 const bushCache = new Map();
-function bushSprites(b) {
-  let s = bushCache.get(b);
+function bushOutline(b, a, rnd) {
+  // Points around an ellipse turned by `a`, with soft lobes so the edge looks leafy, not geometric.
+  const n = 30, pts = [], ph = rnd() * TAU, lobes = 5 + (rnd() * 3 | 0);
+  for (let i = 0; i < n; i++) {
+    const t = i / n * TAU;
+    const k = 1 + 0.09 * Math.sin(t * lobes + ph) + 0.05 * Math.sin(t * 13 + ph * 2) + (rnd() - 0.5) * 0.05;
+    const ex = Math.cos(t) * b.rx * k, ey = Math.sin(t) * b.ry * k;
+    pts.push([ex * Math.cos(a) - ey * Math.sin(a), ex * Math.sin(a) + ey * Math.cos(a)]);
+  }
+  return pts;
+}
+function smoothPath(g, pts, ox, oy) {
+  g.beginPath();
+  const m = (p, q) => [(p[0] + q[0]) / 2 + ox, (p[1] + q[1]) / 2 + oy];
+  let s0 = m(pts[pts.length - 1], pts[0]);
+  g.moveTo(s0[0], s0[1]);
+  for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length], mm = m(p, q); g.quadraticCurveTo(p[0] + ox, p[1] + oy, mm[0], mm[1]); }
+  g.closePath();
+}
+function leaf(g, x, y, len, wid, rot, fill, vein) {
+  g.save(); g.translate(x, y); g.rotate(rot);
+  g.fillStyle = fill;
+  g.beginPath(); g.moveTo(-len * 0.5, 0); g.quadraticCurveTo(0, -wid, len * 0.5, 0); g.quadraticCurveTo(0, wid, -len * 0.5, 0); g.fill();
+  if (vein) { g.strokeStyle = vein; g.lineWidth = 1; g.beginPath(); g.moveTo(-len * 0.4, 0); g.lineTo(len * 0.4, 0); g.stroke(); }
+  g.restore();
+}
+function bushSprites(b, flip) {
+  const key = b.seed + (flip ? ':f' : ':n');
+  let s = bushCache.get(key);
   if (s) return s;
-  const R = b.r, size = Math.ceil(R * 2 + 70), c0 = size / 2;
+  const a = flip ? Math.PI / 2 - b.ang : b.ang;
+  const R = b.rx, size = Math.ceil(R * 2 + 90), c0 = size / 2;
   const rnd = D.mulberry32(b.seed);
+  const pts = bushOutline(b, a, rnd);
+  // ---- base ----
   const base = document.createElement('canvas'); base.width = base.height = size;
   const g = base.getContext('2d');
-  g.fillStyle = 'rgba(0,0,0,0.28)'; ellipse(g, c0 + 6, c0 + 8, R * 1.02, R * 0.92); g.fill();
-  g.fillStyle = '#163a1d'; ellipse(g, c0, c0, R * 0.98, R * 0.9); g.fill();
-  const greens = ['#1d4a24', '#22552a', '#296230', '#2f6d35', '#377a3b'];
-  for (let i = 0; i < 90; i++) {
-    const a = rnd() * TAU, d = Math.sqrt(rnd()) * R * 0.92;
-    const x = c0 + Math.cos(a) * d, y = c0 + Math.sin(a) * d * 0.9;
-    const shade = Math.min(4, Math.floor((1 - d / R) * 3 + rnd() * 2));
-    g.fillStyle = greens[shade];
-    for (let k = 0; k < 3; k++) { ellipse(g, x + (rnd() - 0.5) * 10, y + (rnd() - 0.5) * 8, 7 + rnd() * 6, 4 + rnd() * 3, rnd() * Math.PI); g.fill(); }
+  g.fillStyle = 'rgba(0,0,0,0.32)'; smoothPath(g, pts, c0 + 7, c0 + 10); g.fill();
+  g.save();
+  smoothPath(g, pts, c0, c0); g.clip();
+  const body = g.createRadialGradient(c0 - R * 0.2, c0 - b.ry * 0.4, 6, c0, c0, R);
+  body.addColorStop(0, '#3a8a3c'); body.addColorStop(0.6, '#25652d'); body.addColorStop(1, '#174a22');
+  g.fillStyle = body; g.fillRect(0, 0, size, size);
+  // Layered leaves: darker underneath, lighter on top, lit from the upper left.
+  const greens = ['#174822', '#1e5a28', '#267030', '#2f8236', '#3b963f', '#4daa48'];
+  const area = Math.PI * b.rx * b.ry;
+  for (let layer = 0; layer < 3; layer++) {
+    const count = area / (layer === 2 ? 900 : 620);
+    for (let i = 0; i < count; i++) {
+      const t = rnd() * TAU, d = Math.sqrt(rnd());
+      const ex = Math.cos(t) * b.rx * d, ey = Math.sin(t) * b.ry * d;
+      const x = c0 + ex * Math.cos(a) - ey * Math.sin(a), y = c0 + ex * Math.sin(a) + ey * Math.cos(a);
+      const lit = Math.max(0, Math.min(1, 0.5 - (x - c0) / R * 0.25 - (y - c0) / R * 0.45));
+      const shade = Math.min(5, Math.floor(layer * 1.4 + lit * 2.4 + rnd() * 1.2));
+      leaf(g, x, y, 18 + rnd() * 14, 5 + rnd() * 4, rnd() * Math.PI, greens[shade], layer === 2 && rnd() < 0.5 ? 'rgba(10,40,16,0.35)' : null);
+    }
   }
-  for (let i = 0; i < 30; i++) {
-    const a = rnd() * TAU, d = Math.sqrt(rnd()) * R * 0.8;
-    g.fillStyle = 'rgba(150,210,120,0.35)';
-    ellipse(g, c0 + Math.cos(a) * d, c0 + Math.sin(a) * d * 0.9, 3, 1.6, rnd() * Math.PI); g.fill();
+  // A few flowers, like the meadow bushes of a MOBA map.
+  for (let i = 0; i < area / 9000; i++) {
+    const t = rnd() * TAU, d = Math.sqrt(rnd()) * 0.75;
+    const ex = Math.cos(t) * b.rx * d, ey = Math.sin(t) * b.ry * d;
+    const x = c0 + ex * Math.cos(a) - ey * Math.sin(a), y = c0 + ex * Math.sin(a) + ey * Math.cos(a);
+    const col = ['#ffd75a', '#ff9ac0', '#ffffff', '#b8a0ff'][(rnd() * 4) | 0];
+    for (let k = 0; k < 5; k++) { g.fillStyle = col; circle(g, x + Math.cos(k / 5 * TAU) * 3, y + Math.sin(k / 5 * TAU) * 3, 2.4); g.fill(); }
+    g.fillStyle = '#e8a020'; circle(g, x, y, 1.6); g.fill();
   }
+  // Inner shade along the rim gives the patch depth.
+  const rim = g.createRadialGradient(c0, c0, R * 0.55, c0, c0, R * 1.05);
+  rim.addColorStop(0, 'rgba(0,0,0,0)'); rim.addColorStop(1, 'rgba(4,24,10,0.35)');
+  g.fillStyle = rim; g.fillRect(0, 0, size, size);
+  g.restore();
+  // Crisp outline with a light upper edge.
+  smoothPath(g, pts, c0, c0); g.strokeStyle = '#0d2c14'; g.lineWidth = 4; g.stroke();
+  g.save(); smoothPath(g, pts, c0, c0 + 2.5); g.clip();
+  smoothPath(g, pts, c0, c0); g.strokeStyle = 'rgba(150,220,110,0.45)'; g.lineWidth = 2.5; g.stroke();
+  g.restore();
+  // ---- top fringe: tall grass and broad leaves along the near edge ----
   const top = document.createElement('canvas'); top.width = top.height = size;
   const t = top.getContext('2d');
   t.lineCap = 'round';
-  for (let i = 0; i < 70; i++) {
-    const a = 0.08 * Math.PI + rnd() * 0.84 * Math.PI;
-    const x = c0 + Math.cos(a) * R * (0.82 + rnd() * 0.18), y = c0 + Math.sin(a) * R * 0.9 * (0.85 + rnd() * 0.15);
-    const h = 16 + rnd() * 22, lean = (rnd() - 0.5) * 12;
-    t.strokeStyle = rnd() < 0.5 ? '#2c6a30' : '#3f8a3f';
-    t.lineWidth = 3 + rnd() * 2;
-    t.beginPath(); t.moveTo(x, y); t.quadraticCurveTo(x + lean * 0.3, y - h * 0.6, x + lean, y - h); t.stroke();
+  const near = pts.filter(p => p[1] > b.ry * 0.15 * Math.abs(Math.cos(a)) - 2);
+  const edge = near.length >= 6 ? near : pts.slice().sort((p, q) => q[1] - p[1]).slice(0, Math.ceil(pts.length / 2));
+  for (const [px, py] of edge) {
+    for (let k = 0; k < 4; k++) {
+      const x = c0 + px * (0.88 + rnd() * 0.1) + (rnd() - 0.5) * 16, y = c0 + py * (0.88 + rnd() * 0.1);
+      const h = 18 + rnd() * 24, lean = (rnd() - 0.5) * 14;
+      const gr = t.createLinearGradient(x, y, x, y - h);
+      gr.addColorStop(0, '#1d5226'); gr.addColorStop(1, rnd() < 0.5 ? '#4a9c44' : '#5fb150');
+      t.strokeStyle = gr; t.lineWidth = 3 + rnd() * 2.5;
+      t.beginPath(); t.moveTo(x, y); t.quadraticCurveTo(x + lean * 0.3, y - h * 0.6, x + lean, y - h); t.stroke();
+    }
+    if (rnd() < 0.55) leaf(t, c0 + px * 0.9, c0 + py * 0.9 - 8, 26 + rnd() * 10, 7, -Math.PI / 2 + (rnd() - 0.5) * 1.2, rnd() < 0.5 ? '#2f8236' : '#3b963f', 'rgba(10,40,16,0.4)');
   }
   s = { base, top, size };
-  bushCache.set(b, s);
+  bushCache.set(key, s);
   return s;
 }
-function drawBush(ctx, b, layer) {
-  const s = bushSprites(b);
+function drawBush(ctx, b, layer, flip) {
+  const s = bushSprites(b, !!flip);
   ctx.drawImage(layer === 'top' ? s.top : s.base, -s.size / 2, -s.size / 2);
 }
 
 LF.art = {
-  drawRig, drawMonster, drawTower, drawCore, drawObstacle, drawSiege, getMinionLook, buildTerrain, portrait, drawBush,
+  drawRig, drawMonster, drawTower, drawCore, drawObstacle, drawWallBase, drawSiege, getMinionLook, buildTerrain, portrait, drawBush,
   glow, circle, ellipse, poly, star, rrect, diamond, mix, shade, rgba, TERRAIN_SCALE,
 };
 })(window.LF);

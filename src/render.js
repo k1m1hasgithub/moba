@@ -23,7 +23,7 @@ function init(c, m) {
   const g = miniTerrain.getContext('2d');
   g.drawImage(terrain, 0, 0, 360, 360);
   g.fillStyle = '#123018';
-  for (const b of D.BUSHES) { g.beginPath(); g.arc(b.x / D.W * 360, b.y / D.H * 360, b.r / D.W * 360, 0, Math.PI * 2); g.fill(); }
+  for (const b of D.BUSHES) { g.beginPath(); g.ellipse(b.x / D.W * 360, b.y / D.H * 360, b.rx / D.W * 360, b.ry / D.W * 360, b.ang, 0, Math.PI * 2); g.fill(); }
   resize();
 }
 
@@ -272,7 +272,10 @@ function draw(view, dt, opts) {
 
   // Zones on the ground
   for (const z of view.zones) drawZoneGround(z);
-  for (const b of D.BUSHES) if (onScreen(b.x, b.y)) { upright(b.x, b.y); A.drawBush(ctx, b, 'base'); ctx.restore(); }
+  // Walls as one shape (stone ridges and forest floor), then the bush bases beside them.
+  const up = cam.flip ? { x: -1, y: 0 } : { x: 0, y: -1 };
+  for (const run of D.WALL_RUNS) if (run.pts.some(p => onScreen(p.x, p.y))) A.drawWallBase(ctx, run, up);
+  for (const b of D.BUSHES) if (onScreen(b.x, b.y)) { upright(b.x, b.y); A.drawBush(ctx, b, 'base', cam.flip); ctx.restore(); }
 
   // Enemy tower ranges near the player
   if (player && !player.dead) {
@@ -339,7 +342,7 @@ function draw(view, dt, opts) {
   }
 
   // Grass fringe in front of anyone standing in a bush
-  for (const b of D.BUSHES) if (onScreen(b.x, b.y)) { upright(b.x, b.y); A.drawBush(ctx, b, 'top'); ctx.restore(); }
+  for (const b of D.BUSHES) if (onScreen(b.x, b.y)) { upright(b.x, b.y); A.drawBush(ctx, b, 'top', cam.flip); ctx.restore(); }
   // Projectiles
   for (const p of view.projs) if (onScreen(p.x, p.y)) drawProj(p);
   // Zones above ground (falling things)

@@ -174,11 +174,103 @@ function enemyUnitsNear(h, x, y, r, opts = {}) {
 // ---------------------------------------------------------------------------
 // Movement
 // ---------------------------------------------------------------------------
-function moveToward(u, tx, ty, dt, speed) {
+// ---------------------------------------------------------------------------
+// Navigation: a walkability grid built from the walls, line-of-sight checks and A* paths, so heroes
+// and monsters walk around long walls instead of pressing into them. Minions keep to their lanes.
+// ---------------------------------------------------------------------------
+const NAV = (() => {
+  const cell = 50, cols = Math.ceil(W / cell), rows = Math.ceil(H / cell);
+  const blocked = new Uint8Array(cols * rows);
+  for (const o of SOLIDS) {
+    const pad = o.r + 26, c0 = Math.max(0, Math.floor((o.x - pad) / cell)), c1 = Math.min(cols - 1, Math.floor((o.x + pad) / cell));
+    const r0 = Math.max(0, Math.floor((o.y - pad) / cell)), r1 = Math.min(rows - 1, Math.floor((o.y + pad) / cell));
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+      if (Math.hypot((c + 0.5) * cell - o.x, (r + 0.5) * cell - o.y) < pad) blocked[r * cols + c] = 1;
+    }
+  }
+  return { cell, cols, rows, blocked };
+})();
+const navAt = (x, y) => {
+  const c = Math.floor(x / NAV.cell), r = Math.floor(y / NAV.cell);
+  return c < 0 || r < 0 || c >= NAV.cols || r >= NAV.rows ? 1 : NAV.blocked[r * NAV.cols + c];
+};
+function clearLine(ax, ay, bx, by) {
+  const d = Math.hypot(bx - ax, by - ay), n = Math.ceil(d / 22);
+  for (let i = 1; i < n; i++) if (navAt(ax + (bx - ax) * i / n, ay + (by - ay) * i / n)) return false;
+  return true;
+}
+function nearestFree(c, r) {
+  const { cols, rows, blocked } = NAV;
+  for (let k = 0; k < 8; k++) for (let dr = -k; dr <= k; dr++) for (let dc = -k; dc <= k; dc++) {
+    const cc = c + dc, rr = r + dr;
+    if (cc >= 0 && rr >= 0 && cc < cols && rr < rows && !blocked[rr * cols + cc]) return rr * cols + cc;
+  }
+  return -1;
+}
+function findPath(sx, sy, tx, ty) {
+  const { cell, cols, rows, blocked } = NAV;
+  const start = nearestFree(Math.floor(sx / cell), Math.floor(sy / cell));
+  const goal = nearestFree(Math.floor(tx / cell), Math.floor(ty / cell));
+  if (start < 0 || goal < 0) return null;
+  const gc = goal % cols, gr = (goal / cols) | 0;
+  const g = new Float32Array(cols * rows).fill(Infinity), from = new Int32Array(cols * rows).fill(-1), done = new Uint8Array(cols * rows);
+  const heap = [];
+  const push = (i, f) => { heap.push([f, i]); let k = heap.length - 1; while (k > 0) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { const l = k * 2 + 1, r = l + 1; let m = k; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top; };
+  const hEst = i => { const c = i % cols, r = (i / cols) | 0; return Math.hypot(c - gc, r - gr); };
+  g[start] = 0; push(start, hEst(start));
+  let found = false, guard = 0;
+  while (heap.length && guard++ < 20000) {
+    const [, i] = pop();
+    if (done[i]) continue;
+    done[i] = 1;
+    if (i === goal) { found = true; break; }
+    const c = i % cols, r = (i / cols) | 0;
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      if (!dr && !dc) continue;
+      const cc = c + dc, rr = r + dr;
+      if (cc < 0 || rr < 0 || cc >= cols || rr >= rows) continue;
+      const j = rr * cols + cc;
+      if (blocked[j] || done[j]) continue;
+      if (dr && dc && (blocked[r * cols + cc] || blocked[rr * cols + c])) continue; // no corner cutting
+      const ng = g[i] + (dr && dc ? 1.414 : 1);
+      if (ng < g[j]) { g[j] = ng; from[j] = i; push(j, ng + hEst(j)); }
+    }
+  }
+  if (!found) return null;
+  const pts = [];
+  for (let i = goal; i !== -1 && i !== start; i = from[i]) pts.push({ x: (i % cols + 0.5) * cell, y: (((i / cols) | 0) + 0.5) * cell });
+  pts.reverse();
+  pts.push({ x: tx, y: ty });
+  return pts;
+}
+// Where to head now on the way to (tx, ty): straight there if nothing blocks the line, else the
+// furthest visible point of a cached A* path.
+function waypoint(u, tx, ty) {
+  if (u.kind === 'minion' || clearLine(u.x, u.y, tx, ty)) { u.nav = null; return { x: tx, y: ty }; }
+  let nav = u.nav;
+  if (!nav || Math.hypot(nav.tx - tx, nav.ty - ty) > 120 || G.t - nav.at > 3 || nav.i >= nav.pts.length) {
+    const pts = findPath(u.x, u.y, tx, ty);
+    if (!pts) { u.nav = null; return { x: tx, y: ty }; }
+    nav = u.nav = { tx, ty, pts, i: 0, at: G.t };
+  }
+  while (nav.i < nav.pts.length - 1 && clearLine(u.x, u.y, nav.pts[nav.i + 1].x, nav.pts[nav.i + 1].y)) nav.i++;
+  const p = nav.pts[nav.i];
+  if (Math.hypot(p.x - u.x, p.y - u.y) < 30 && nav.i < nav.pts.length - 1) nav.i++;
+  return nav.pts[nav.i];
+}
+
+function moveToward(u, tx, ty, dt, speed, direct) {
   let dx = tx - u.x, dy = ty - u.y;
   const d = Math.hypot(dx, dy);
   if (d < 3) return true;
-  dx /= d; dy /= d;
+  if (!direct) {
+    const w = waypoint(u, tx, ty);
+    if (w.x !== tx || w.y !== ty) {
+      const wd = Math.hypot(w.x - u.x, w.y - u.y);
+      if (wd > 1) { dx = (w.x - u.x) / wd; dy = (w.y - u.y) / wd; }
+    } else { dx /= d; dy /= d; }
+  } else { dx /= d; dy /= d; }
   // Steer around rocks, trees and structures that sit on the straight line.
   const look = Math.min(d, 220);
   const steer = (o, pad) => {
@@ -207,7 +299,7 @@ function moveToward(u, tx, ty, dt, speed) {
 function moveDir(u, vx, vy, dt) {
   const n = Math.hypot(vx, vy);
   if (n < 0.01) return;
-  moveToward(u, u.x + vx / n * 400, u.y + vy / n * 400, dt);
+  moveToward(u, u.x + vx / n * 400, u.y + vy / n * 400, dt, undefined, true);
 }
 
 function pushOut(u) {

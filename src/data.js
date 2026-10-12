@@ -126,80 +126,128 @@ function mulberry32(a) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+// ---------------------------------------------------------------------------
+// Walls, rocks and trees. The map is laid out with connected walls instead of scattered props:
+// rock ridges along the inner edge of each lane and along the river bank, tree lines that split the
+// jungle and line the map edge. Walls are drawn as polylines (blue half, 3600-unit authoring grid) and
+// turned into a chain of overlapping solid circles; any piece that would block a lane, camp, tower,
+// base or the river is dropped, which leaves natural gaps to walk through. Mirrored for red.
+// ---------------------------------------------------------------------------
+const WALLS = [
+  // Inner edge of the left lane, rocks, with bushes on the lane side.
+  { kind: 'rock', bush: -1, pts: [[585, 760], [575, 1500], [585, 2250], [640, 2640]] },
+  // Inner edge of the bottom lane.
+  { kind: 'rock', bush: 1, pts: [[960, 3015], [1700, 3030], [2500, 3020], [2840, 2960]] },
+  // River bank on the upper jungle (gap at the boss pit) and the lower jungle.
+  { kind: 'rock', bush: 1, pts: [[560, 900], [900, 1240], [1250, 1590], [1560, 1900]] },
+  { kind: 'rock', bush: 1, pts: [[1960, 2300], [2300, 2640], [2640, 2980]] },
+  // Tree lines along the jungle side of the mid lane.
+  { kind: 'tree', bush: 1, pts: [[880, 2370], [1220, 2040], [1520, 1740]] },
+  { kind: 'tree', bush: -1, pts: [[1280, 2730], [1640, 2370], [1980, 2030]] },
+  // Tree lines that split each jungle into pockets around the camps.
+  { kind: 'tree', bush: 2, pts: [[860, 1380], [800, 1800], [930, 2100]] },
+  { kind: 'tree', bush: 2, pts: [[1800, 2800], [1900, 2560]] },
+  // Forest along the map edge, outside the lanes.
+  { kind: 'tree', bush: 0, pts: [[70, 700], [70, 1700], [70, 2700]] },
+  { kind: 'tree', bush: 0, pts: [[900, 3530], [1900, 3530], [2900, 3530]] },
+];
+const wallClear = (x, y, r) => {
+  for (const id of LANE_IDS) if (laneProject(LANES[id], x, y).d < r + 165) return false;
+  for (const c of CAMPS) if (Math.hypot(c.x - x, c.y - y) < r + (c.side === NEUTRAL ? 430 : 200)) return false;
+  for (const f of FOUNTAIN) if (Math.hypot(f.x - x, f.y - y) < r + 600) return false;
+  for (const t of STRUCTS[0].concat(STRUCTS[1])) if (Math.hypot(t.x - x, t.y - y) < r + 200) return false;
+  if (Math.abs(x - y) / Math.SQRT2 < r + 150) return false; // keep the river open
+  return x > r + 10 && y < H - r - 10 && y - x > r;
+};
+// Points every `step` along a wall, with the wall direction at each point.
+function wallSamples(w, step) {
+  const pts = w.pts.map(([x, y]) => ({ x: S(x), y: S(y) })), out = [];
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i], b = pts[i + 1], len = Math.hypot(b.x - a.x, b.y - a.y), n = Math.max(1, Math.round(len / step));
+    for (let k = i ? 1 : 0; k <= n; k++) out.push({ x: a.x + (b.x - a.x) * k / n, y: a.y + (b.y - a.y) * k / n, dx: (b.x - a.x) / len, dy: (b.y - a.y) / len });
+  }
+  return out;
+}
 const OBSTACLES = (() => {
   const rnd = mulberry32(2024);
   const blue = [];
-  const clearOf = (x, y, r) => {
-    for (const id of LANE_IDS) if (laneProject(LANES[id], x, y).d < r + 170) return false;
-    for (const c of CAMPS) if (Math.hypot(c.x - x, c.y - y) < r + (c.side === NEUTRAL ? 430 : 210)) return false;
-    for (const f of FOUNTAIN) if (Math.hypot(f.x - x, f.y - y) < r + 600) return false;
-    for (const t of STRUCTS[0].concat(STRUCTS[1])) if (Math.hypot(t.x - x, t.y - y) < r + 200) return false;
-    if (Math.abs(x - y) / Math.SQRT2 < r + 150) return false; // keep the river open
-    if (y - x < r + 150) return false; // blue half only
-    for (const o of blue) {
-      if (Math.hypot(o.x - x, o.y - y) < o.r + r + 115) return false;
-      const m = mirror(o);
-      if (Math.hypot(m.x - x, m.y - y) < o.r + r + 115) return false;
+  WALLS.forEach((w, wi) => {
+    for (const p of wallSamples(w, w.kind === 'tree' ? 78 : 74)) {
+      const r = (w.kind === 'tree' ? 56 : 50) + rnd() * 14;
+      const j = (rnd() - 0.5) * 16, x = p.x - p.dy * j, y = p.y + p.dx * j;
+      if (wallClear(x, y, r)) blue.push({ x, y, r, kind: w.kind, wall: wi, seed: (rnd() * 1e6) | 0 });
     }
-    return x > r + 40 && y < H - r - 40;
-  };
-  for (let i = 0; i < 6000 && blue.length < 52; i++) {
-    const x = 200 + rnd() * (W - 400), y = 200 + rnd() * (H - 400), r = 50 + rnd() * 50;
-    if (clearOf(x, y, r)) blue.push({ x, y, r, kind: rnd() < 0.62 ? 'tree' : 'rock', seed: (rnd() * 1e6) | 0 });
-  }
+  });
   const out = [];
-  for (const o of blue) { out.push(o); out.push(Object.assign({}, o, mirror(o), { seed: o.seed + 7 })); }
+  for (const o of blue) { out.push(Object.assign({ half: 0 }, o)); out.push(Object.assign({}, o, mirror(o), { half: 1, seed: o.seed + 7 })); }
   return out;
 })();
+// Each wall as runs of touching pieces (split at the gaps), for drawing it as one shape.
+const WALL_RUNS = (() => {
+  const runs = [];
+  for (const half of [0, 1]) WALLS.forEach((w, wi) => {
+    let run = null;
+    for (const o of OBSTACLES) {
+      if (o.wall !== wi || o.half !== half) continue;
+      const last = run && run.pts[run.pts.length - 1];
+      if (!last || Math.hypot(o.x - last.x, o.y - last.y) > (o.r + last.r) * 1.25) { run = { kind: w.kind, pts: [] }; runs.push(run); }
+      run.pts.push(o);
+    }
+  });
+  return runs;
+})();
 
-// Bushes: heroes inside are hidden from the enemy team. Placed beside the lanes and
-// in the jungle on the blue half, then mirrored.
+// Bushes: heroes inside are hidden from the enemy team. Each bush is a long patch (an ellipse with half
+// sizes rx, ry turned by `ang`) that hugs a wall on the side the wall lists, lying along it.
+// `r` (= rx) is the bounding radius used for spacing. Placed on the blue half, then mirrored.
 const BUSHES = (() => {
   const rnd = mulberry32(4242);
   const blue = [];
-  const clearOf = (x, y, r) => {
-    if (x < r + 40 || y > H - r - 40 || x > W - r - 40 || y < r + 40) return false;
-    if (y - x < r + 60) return false; // blue half, off the river centre
-    for (const o of OBSTACLES) if (Math.hypot(o.x - x, o.y - y) < o.r + r + 15) return false;
-    for (const c of CAMPS) if (Math.hypot(c.x - x, c.y - y) < r + (c.side === NEUTRAL ? 400 : 135)) return false;
-    for (const f of FOUNTAIN) if (Math.hypot(f.x - x, f.y - y) < r + 700) return false;
-    for (const t of STRUCTS[0].concat(STRUCTS[1])) if (Math.hypot(t.x - x, t.y - y) < r + 130) return false;
-    for (const b of blue) {
-      if (Math.hypot(b.x - x, b.y - y) < b.r + r + 140) return false;
-      const m = mirror(b);
-      if (Math.hypot(m.x - x, m.y - y) < b.r + r + 140) return false;
+  const inside = (b, x, y, pad) => {
+    const dx = x - b.x, dy = y - b.y, c = Math.cos(b.ang), s = Math.sin(b.ang);
+    const u = (dx * c + dy * s) / (b.rx + pad), v = (dy * c - dx * s) / (b.ry + pad);
+    return u * u + v * v < 1;
+  };
+  const ok = b => {
+    if (b.x < 60 || b.y > H - 60 || b.y - b.x < b.ry + 60) return false;
+    for (const o of OBSTACLES) for (let k = 0; k < 12; k++) {
+      const t = k / 12 * Math.PI * 2;
+      if (inside(b, o.x + Math.cos(t) * o.r, o.y + Math.sin(t) * o.r, 4)) return false;
     }
+    for (const c of CAMPS) if (Math.hypot(c.x - b.x, c.y - b.y) < b.rx + (c.side === NEUTRAL ? 380 : 120)) return false;
+    for (const f of FOUNTAIN) if (Math.hypot(f.x - b.x, f.y - b.y) < b.rx + 650) return false;
+    for (const t of STRUCTS[0].concat(STRUCTS[1])) if (Math.hypot(t.x - b.x, t.y - b.y) < b.rx + 110) return false;
+    for (const id of LANE_IDS) if (laneProject(LANES[id], b.x, b.y).d < b.ry + 120) return false;
+    for (const o of blue) { if (Math.hypot(o.x - b.x, o.y - b.y) < o.rx + b.rx + 120) return false; const m = mirror(o); if (Math.hypot(m.x - b.x, m.y - b.y) < o.rx + b.rx + 120) return false; }
     return true;
   };
-  // Beside each lane, both sides
-  for (const id of LANE_IDS) {
-    const L = LANES[id];
-    for (let f = 0.14; f < 0.49; f += 0.025) {
-      for (const side of [-1, 1]) {
-        for (const dist of [230, 270]) {
-          const p = laneAt(L, L.len * f), off = dist * side, r = 100 + rnd() * 20;
-          const x = p.x - p.dy * off, y = p.y + p.dx * off;
-          if (clearOf(x, y, r)) { blue.push({ x, y, r, seed: (rnd() * 1e6) | 0 }); break; }
-        }
+  WALLS.forEach((w, wi) => {
+    if (!w.bush) return;
+    const samples = wallSamples(w, 60);
+    for (let i = 0; i < samples.length; i += 3) {
+      const p = samples[i];
+      // Only beside a stretch of wall that actually exists here.
+      if (!OBSTACLES.some(o => o.wall === wi && Math.hypot(o.x - p.x, o.y - p.y) < 90)) continue;
+      const s = 92 + rnd() * 22, rx = s * 1.45, ry = s * 0.6;
+      // bush: 1 or -1 picks a side of the wall (by its direction), 2 tries both.
+      for (const side of w.bush === 2 ? [1, -1] : [w.bush]) {
+        const off = 80 + ry, x = p.x - p.dy * off * side, y = p.y + p.dx * off * side;
+        const b = { x, y, r: rx, rx, ry, ang: Math.atan2(p.dy, p.dx), seed: (rnd() * 1e6) | 0 };
+        if (ok(b)) blue.push(b);
       }
     }
-  }
-  // Jungle
-  const laneCount = blue.length;
-  for (let i = 0; i < 9000 && blue.length < laneCount + 10; i++) {
-    const x = 300 + rnd() * (W - 600), y = 300 + rnd() * (H - 600), r = 100 + rnd() * 30;
-    let nearLane = false;
-    for (const id of LANE_IDS) if (laneProject(LANES[id], x, y).d < r + 140) nearLane = true;
-    if (!nearLane && clearOf(x, y, r)) blue.push({ x, y, r, seed: (rnd() * 1e6) | 0 });
-  }
+  });
   const out = [];
-  for (const b of blue) { out.push(b); out.push(Object.assign({}, b, mirror(b), { seed: b.seed + 11 })); }
+  // Mirroring across y = x turns an angle a into pi/2 - a.
+  for (const b of blue) { out.push(b); out.push(Object.assign({}, b, mirror(b), { ang: Math.PI / 2 - b.ang, seed: b.seed + 11 })); }
   return out;
 })();
 function bushAt(x, y) {
   for (let i = 0; i < BUSHES.length; i++) {
     const b = BUSHES[i], dx = x - b.x, dy = y - b.y;
-    if (dx * dx + dy * dy < b.r * b.r) return i;
+    if (dx * dx + dy * dy > b.r * b.r) continue;
+    const c = Math.cos(b.ang), s = Math.sin(b.ang), u = (dx * c + dy * s) / b.rx, v = (dy * c - dx * s) / b.ry;
+    if (u * u + v * v < 1) return i;
   }
   return -1;
 }
@@ -492,7 +540,7 @@ const DIFFICULTY = {
 
 LF.data = {
   W, H, MAP, BLUE, RED, NEUTRAL, TAU, TEAMS, mirror, LANES, LANE_IDS, laneAt, laneProject,
-  FOUNTAIN, CORE_POS, STRUCTS, STRUCT_STATS, MONSTERS, CAMPS, OBSTACLES, BUSHES, bushAt, ROLES, ROLE_INDEX,
+  FOUNTAIN, CORE_POS, STRUCTS, STRUCT_STATS, MONSTERS, CAMPS, OBSTACLES, WALL_RUNS, BUSHES, bushAt, ROLES, ROLE_INDEX,
   ITEMS, ITEM, ITEM_INDEX, STAT_LABEL, SPELLS, SPELL, SPELL_INDEX, ROLE_SPELL, REGEN, HEROES, HERO, HERO_INDEX, MINION, ULT_LEVEL, MAX_LEVEL, xpToNext, DIFFICULTY, mulberry32,
 };
 })(window.LF);
