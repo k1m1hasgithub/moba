@@ -30,7 +30,7 @@ No build step, no dependencies, no downloads: plain JavaScript and canvas.
 - **Three-tier crafting.** 33 items: basic pieces craft into Tier 2 items, which craft into Tier 1 items with unique attributes and a unique passive.
 - **Your own builds.** Plan a build for each hero from the full item list. A buy prompt walks you through it piece by piece, or you can prioritize any single item.
 - **Battle spells and Regen.** Pick one of seven battle spells before each match. Every hero also has Regen and Recall.
-- **Bots that play their role.** Laners farm and trade, junglers clear and gank, roamers protect, and everyone contests objectives. Three difficulty levels.
+- **Bots that play like a team.** Laners farm and trade, junglers clear and gank, mid laners roam, roamers protect. Teams get ready before bosses spawn, take them together, rush in to contest (and Smite-steal) when the enemy starts one, and push a tower with the Lord buff. Bots dodge skillshots, ranged heroes kite, and each bot is a little bolder or more careful than the next. Three difficulty levels.
 - **Multiplayer lobbies.** Up to 10 players on claude.ai or your own server; empty seats are filled with bots.
 - **Made for touch too.** Joystick, drag-to-aim skills and a compact layout for phones held sideways.
 
