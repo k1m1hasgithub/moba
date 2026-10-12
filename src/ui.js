@@ -443,7 +443,7 @@ function consumeEvents(view) {
       const name = D.MONSTERS[e.mtype].name;
       hud.bannerQ.push({ title: ally ? `${name} slain` : `Enemies took the ${name}`, cls: ally ? 'good' : 'bad', sub: e.mtype === 'wyrm' ? (ally ? 'Your team deals 15% more damage for 90 seconds.' : 'The enemy team hits harder for 90 seconds.') : 'Gold and experience for the whole team.' });
     } else if (e.type === 'spawn') {
-      hud.bannerQ.push({ title: `The ${D.MONSTERS[e.mtype].name} has appeared`, cls: 'neutral', sub: e.mtype === 'turtle' ? 'In the river near the bottom lane.' : 'In the river near the top lane.' });
+      hud.bannerQ.push({ title: `The ${D.MONSTERS[e.mtype].name} has appeared`, cls: 'neutral', sub: e.mtype === 'turtle' ? 'In the river pit by the top lane.' : 'The Lord has taken the river pit by the top lane.' });
     } else if (e.type === 'ace') {
       const ally = me ? e.team === me.team : e.team === 0;
       hud.bannerQ.push({ title: ally ? 'Ace!' : 'Team wiped', cls: ally ? 'good' : 'bad' });

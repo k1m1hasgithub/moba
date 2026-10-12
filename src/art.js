@@ -1007,6 +1007,8 @@ function buildTerrain() {
   // Boss pits: sunken stone arenas in the river
   for (const cp of D.CAMPS) {
     const boss = cp.type === 'wyrm' || cp.type === 'turtle';
+    // Bosses that share a pit draw it once.
+    if (cp.type === 'turtle' && D.CAMPS.some(o => o.type === 'wyrm' && Math.hypot(o.x - cp.x, o.y - cp.y) < 50)) continue;
     if (!boss) {
       const gr = g.createRadialGradient(cp.x, cp.y, 10, cp.x, cp.y, 190);
       gr.addColorStop(0, 'rgba(120,96,64,0.6)'); gr.addColorStop(1, 'rgba(120,96,64,0)');

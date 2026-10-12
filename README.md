@@ -86,7 +86,8 @@ one. It works in multiplayer too: your build travels to the host with your input
 | Roam | Follows a lane | Gorr (tank), Mira (healer) |
 
 Every hero has a passive, two skills and an ultimate. The jungle has buff camps (Azure Wisp, Ember Brute),
-small camps, and two river bosses: the Tidewarden (2:00) and the Lord (8:00).
+small camps, and two river bosses that share one pit by the top lane: the Tidewarden (from 2:00) and the Lord,
+who takes over the pit from 8:00 (the Tidewarden stops returning then).
 
 **Bushes** line the lanes and the jungle. A hero inside one is invisible to the enemy team (and can't be
 targeted) until an enemy walks into the same bush or the hidden hero deals damage. Area skills still hit.

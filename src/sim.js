@@ -834,8 +834,23 @@ function spawnMonster(m) {
   if (def.boss) ev('spawn', { mtype: m.mtype });
 }
 
+// Bosses share a pit: the Tidewarden stops returning once the Lord is due, and the Lord waits
+// until a Tidewarden still standing in the pit has been killed.
+function pitFree(m) {
+  const def = D.MONSTERS[m.mtype];
+  if (def.until && G.t >= def.until) return false;
+  if (def.boss) return !G.monsters.some(o => o !== m && o.boss && !o.dead && dist(o, m.home) < 400);
+  return true;
+}
 function updateMonster(m, dt) {
-  if (m.dead) { if (G.t >= m.respawnAt && G.t - m.deathT > 1) spawnMonster(m); return; }
+  if (m.dead) { if (G.t >= m.respawnAt && G.t - m.deathT > 1 && pitFree(m)) spawnMonster(m); return; }
+  // An untouched Tidewarden leaves the pit when the Lord is due (a fight in progress finishes first).
+  const until = D.MONSTERS[m.mtype].until;
+  if (until && G.t >= until && !m.target && G.t - m.hitT > 5) {
+    m.dead = true; m.hp = 0; m.deathT = G.t; m.respawnAt = Infinity;
+    ev('fx', { vis: 'blink', x: m.x, y: m.y, x2: m.x, y2: m.y, team: 2 });
+    return;
+  }
   const leash = m.boss ? 650 : 520;
   if (m.target && !(isTargetable(m.target) && Math.hypot(m.target.x - m.home.x, m.target.y - m.home.y) < leash + 150)) {
     m.target = null; m.resetting = true;

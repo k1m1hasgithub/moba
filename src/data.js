@@ -95,10 +95,11 @@ const MONSTERS = {
   lizard: { name: 'Thorn Lizard', hp: 1300, ad: 32, r: 30, gold: 70, xp: 95, respawn: 60, first: 25 },
   crab: { name: 'Shell Crab', hp: 1150, ad: 28, r: 30, gold: 65, xp: 85, respawn: 60, first: 25 },
   wolf: { name: 'Dusk Wolf', hp: 1200, ad: 34, r: 30, gold: 65, xp: 90, respawn: 60, first: 25 },
-  turtle: { name: 'Tidewarden', hp: 6500, ad: 90, r: 62, gold: 120, xp: 220, boss: true, team: true, respawn: 120, first: 120 },
+  // Both bosses share the river pit by the top lane: the Tidewarden holds it until the Lord arrives.
+  turtle: { name: 'Tidewarden', hp: 6500, ad: 90, r: 62, gold: 120, xp: 220, boss: true, team: true, respawn: 120, first: 120, until: 480 },
   wyrm: { name: 'Lord', hp: 13000, ad: 150, r: 74, gold: 160, xp: 300, boss: true, team: true, buff: 'wyrm', respawn: 180, first: 480 },
 };
-// Camps on the blue half; red camps are mirrored copies. Bosses sit in the river.
+// Camps on the blue half; red camps are mirrored copies. Both bosses share one river pit by the top lane.
 const CAMPS = (() => {
   const blue = [
     { type: 'wisp', x: 900, y: 1600 }, { type: 'brute', x: 1500, y: 2650 },
@@ -111,7 +112,7 @@ const CAMPS = (() => {
     out.push(Object.assign({ side: BLUE }, c));
     out.push(Object.assign({ side: RED }, c, mirror(c)));
   }
-  out.push({ type: 'turtle', side: NEUTRAL, x: S(2450), y: S(2450) });
+  out.push({ type: 'turtle', side: NEUTRAL, x: S(1150), y: S(1150) });
   out.push({ type: 'wyrm', side: NEUTRAL, x: S(1150), y: S(1150) });
   return out;
 })();
