@@ -216,15 +216,16 @@ const BUSHES = (() => {
     }
     for (const c of CAMPS) if (Math.hypot(c.x - b.x, c.y - b.y) < b.rx + (c.side === NEUTRAL ? 380 : 120)) return false;
     for (const f of FOUNTAIN) if (Math.hypot(f.x - b.x, f.y - b.y) < b.rx + 650) return false;
-    for (const t of STRUCTS[0].concat(STRUCTS[1])) if (Math.hypot(t.x - b.x, t.y - b.y) < b.rx + 110) return false;
+    // No bushes under towers or the core: the whole patch stays outside their attack range.
+    for (const t of STRUCTS[0].concat(STRUCTS[1])) if (Math.hypot(t.x - b.x, t.y - b.y) < b.rx + STRUCT_STATS[t.tier].range + 60) return false;
     for (const id of LANE_IDS) if (laneProject(LANES[id], b.x, b.y).d < b.ry + 120) return false;
-    for (const o of blue) { if (Math.hypot(o.x - b.x, o.y - b.y) < o.rx + b.rx + 120) return false; const m = mirror(o); if (Math.hypot(m.x - b.x, m.y - b.y) < o.rx + b.rx + 120) return false; }
+    for (const o of blue) { if (Math.hypot(o.x - b.x, o.y - b.y) < o.rx + b.rx + 70) return false; const m = mirror(o); if (Math.hypot(m.x - b.x, m.y - b.y) < o.rx + b.rx + 70) return false; }
     return true;
   };
   WALLS.forEach((w, wi) => {
     if (!w.bush) return;
     const samples = wallSamples(w, 60);
-    for (let i = 0; i < samples.length; i += 3) {
+    for (let i = 0; i < samples.length; i += 2) {
       const p = samples[i];
       // Only beside a stretch of wall that actually exists here.
       if (!OBSTACLES.some(o => o.wall === wi && Math.hypot(o.x - p.x, o.y - p.y) < 90)) continue;

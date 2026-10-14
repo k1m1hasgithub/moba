@@ -10,7 +10,6 @@ const gap = (a, b) => dist(a, b) - a.r - b.r;
 const rand = (a, b) => a + Math.random() * (b - a);
 
 const WAVE_EVERY = 25, FIRST_WAVE = 18, RECALL_TIME = 3.5;
-const SOLIDS = D.OBSTACLES;
 
 let G = null;
 
@@ -178,39 +177,81 @@ function enemyUnitsNear(h, x, y, r, opts = {}) {
 // Navigation: a walkability grid built from the walls, line-of-sight checks and A* paths, so heroes
 // and monsters walk around long walls instead of pressing into them. Minions keep to their lanes.
 // ---------------------------------------------------------------------------
+// Walls collide as capsules: each run of touching pieces becomes a chain of segments whose radius
+// blends from one piece to the next, so a wall is one smooth surface to slide along instead of a row
+// of bumps. A coarse bucket grid keeps the lookups short.
+const WALL_SEGS = (() => {
+  const segs = [];
+  for (const run of D.WALL_RUNS) {
+    const p = run.pts;
+    if (p.length === 1) segs.push({ ax: p[0].x, ay: p[0].y, ar: p[0].r, bx: p[0].x, by: p[0].y, br: p[0].r });
+    for (let i = 0; i + 1 < p.length; i++) segs.push({ ax: p[i].x, ay: p[i].y, ar: p[i].r, bx: p[i + 1].x, by: p[i + 1].y, br: p[i + 1].r });
+  }
+  return segs;
+})();
+const SEG_CELL = 200, SEG_COLS = Math.ceil(W / SEG_CELL), SEG_ROWS = Math.ceil(H / SEG_CELL);
+const SEG_GRID = (() => {
+  const grid = Array.from({ length: SEG_COLS * SEG_ROWS }, () => []), pad = 140;
+  WALL_SEGS.forEach((g, i) => {
+    const c0 = Math.max(0, Math.floor((Math.min(g.ax, g.bx) - pad) / SEG_CELL)), c1 = Math.min(SEG_COLS - 1, Math.floor((Math.max(g.ax, g.bx) + pad) / SEG_CELL));
+    const r0 = Math.max(0, Math.floor((Math.min(g.ay, g.by) - pad) / SEG_CELL)), r1 = Math.min(SEG_ROWS - 1, Math.floor((Math.max(g.ay, g.by) + pad) / SEG_CELL));
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) grid[r * SEG_COLS + c].push(g);
+  });
+  return grid;
+})();
+const segsNear = (x, y) => {
+  const c = Math.floor(x / SEG_CELL), r = Math.floor(y / SEG_CELL);
+  return c < 0 || r < 0 || c >= SEG_COLS || r >= SEG_ROWS ? [] : SEG_GRID[r * SEG_COLS + c];
+};
+// Closest point of a wall segment to (x, y): returns the gap to its surface (negative inside) and the
+// outward direction.
+function segGap(g, x, y) {
+  const vx = g.bx - g.ax, vy = g.by - g.ay, L2 = vx * vx + vy * vy;
+  const t = L2 ? clamp(((x - g.ax) * vx + (y - g.ay) * vy) / L2, 0, 1) : 0;
+  const cx = g.ax + vx * t, cy = g.ay + vy * t, dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy);
+  return { gap: d - (g.ar + (g.br - g.ar) * t), nx: d > 0.01 ? dx / d : 1, ny: d > 0.01 ? dy / d : 0 };
+}
+// Free space around (x, y): the distance to the nearest wall surface.
+function wallGap(x, y) {
+  let best = Infinity;
+  for (const g of segsNear(x, y)) { const q = segGap(g, x, y); if (q.gap < best) best = q.gap; }
+  return best;
+}
+
+// Navigation: a walkability grid built from the walls, line-of-sight checks and A* paths, so heroes
+// and monsters walk around long walls instead of pressing into them. Minions keep to their lanes.
 const NAV = (() => {
   const cell = 50, cols = Math.ceil(W / cell), rows = Math.ceil(H / cell);
   const blocked = new Uint8Array(cols * rows);
-  for (const o of SOLIDS) {
-    const pad = o.r + 26, c0 = Math.max(0, Math.floor((o.x - pad) / cell)), c1 = Math.min(cols - 1, Math.floor((o.x + pad) / cell));
-    const r0 = Math.max(0, Math.floor((o.y - pad) / cell)), r1 = Math.min(rows - 1, Math.floor((o.y + pad) / cell));
-    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
-      if (Math.hypot((c + 0.5) * cell - o.x, (r + 0.5) * cell - o.y) < pad) blocked[r * cols + c] = 1;
-    }
-  }
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (wallGap((c + 0.5) * cell, (r + 0.5) * cell) < 30) blocked[r * cols + c] = 1;
   return { cell, cols, rows, blocked };
 })();
-const navAt = (x, y) => {
-  const c = Math.floor(x / NAV.cell), r = Math.floor(y / NAV.cell);
-  return c < 0 || r < 0 || c >= NAV.cols || r >= NAV.rows ? 1 : NAV.blocked[r * NAV.cols + c];
-};
-function clearLine(ax, ay, bx, by) {
-  const d = Math.hypot(bx - ax, by - ay), n = Math.ceil(d / 22);
-  for (let i = 1; i < n; i++) if (navAt(ax + (bx - ax) * i / n, ay + (by - ay) * i / n)) return false;
+// Can a unit of radius `rad` walk straight from a to b? Starting flush against a wall is fine.
+function clearLine(ax, ay, bx, by, rad) {
+  const d = Math.hypot(bx - ax, by - ay), n = Math.ceil(d / 16), need = (rad || 26) - 4;
+  for (let i = 1; i <= n; i++) if (wallGap(ax + (bx - ax) * i / n, ay + (by - ay) * i / n) < need) return false;
   return true;
 }
-function nearestFree(c, r) {
-  const { cols, rows, blocked } = NAV;
-  for (let k = 0; k < 8; k++) for (let dr = -k; dr <= k; dr++) for (let dc = -k; dc <= k; dc++) {
-    const cc = c + dc, rr = r + dr;
-    if (cc >= 0 && rr >= 0 && cc < cols && rr < rows && !blocked[rr * cols + cc]) return rr * cols + cc;
+// The free grid cell closest to (x, y).
+function nearestFree(x, y) {
+  const { cell, cols, rows, blocked } = NAV, c0 = Math.floor(x / cell), r0 = Math.floor(y / cell);
+  let best = -1, bd = Infinity;
+  for (let k = 0; k < 10 && best < 0; k++) {
+    // Look one ring further than the first hit, since a diagonal cell can be closer than a straight one.
+    for (const kk of [k, k + 1]) for (let dr = -kk; dr <= kk; dr++) for (let dc = -kk; dc <= kk; dc++) {
+      if (Math.max(Math.abs(dr), Math.abs(dc)) !== kk) continue;
+      const c = c0 + dc, r = r0 + dr;
+      if (c < 0 || r < 0 || c >= cols || r >= rows || blocked[r * cols + c]) continue;
+      const d = Math.hypot((c + 0.5) * cell - x, (r + 0.5) * cell - y);
+      if (d < bd) { bd = d; best = r * cols + c; }
+    }
   }
-  return -1;
+  return best;
 }
 function findPath(sx, sy, tx, ty) {
   const { cell, cols, rows, blocked } = NAV;
-  const start = nearestFree(Math.floor(sx / cell), Math.floor(sy / cell));
-  const goal = nearestFree(Math.floor(tx / cell), Math.floor(ty / cell));
+  const start = nearestFree(sx, sy);
+  const goal = nearestFree(tx, ty);
   if (start < 0 || goal < 0) return null;
   const gc = goal % cols, gr = (goal / cols) | 0;
   const g = new Float32Array(cols * rows).fill(Infinity), from = new Int32Array(cols * rows).fill(-1), done = new Uint8Array(cols * rows);
@@ -247,14 +288,14 @@ function findPath(sx, sy, tx, ty) {
 // Where to head now on the way to (tx, ty): straight there if nothing blocks the line, else the
 // furthest visible point of a cached A* path.
 function waypoint(u, tx, ty) {
-  if (u.kind === 'minion' || clearLine(u.x, u.y, tx, ty)) { u.nav = null; return { x: tx, y: ty }; }
+  if (u.kind === 'minion' || clearLine(u.x, u.y, tx, ty, u.r)) { u.nav = null; return { x: tx, y: ty }; }
   let nav = u.nav;
   if (!nav || Math.hypot(nav.tx - tx, nav.ty - ty) > 120 || G.t - nav.at > 3 || nav.i >= nav.pts.length) {
     const pts = findPath(u.x, u.y, tx, ty);
     if (!pts) { u.nav = null; return { x: tx, y: ty }; }
     nav = u.nav = { tx, ty, pts, i: 0, at: G.t };
   }
-  while (nav.i < nav.pts.length - 1 && clearLine(u.x, u.y, nav.pts[nav.i + 1].x, nav.pts[nav.i + 1].y)) nav.i++;
+  while (nav.i < nav.pts.length - 1 && clearLine(u.x, u.y, nav.pts[nav.i + 1].x, nav.pts[nav.i + 1].y, u.r)) nav.i++;
   const p = nav.pts[nav.i];
   if (Math.hypot(p.x - u.x, p.y - u.y) < 30 && nav.i < nav.pts.length - 1) nav.i++;
   return nav.pts[nav.i];
@@ -271,7 +312,8 @@ function moveToward(u, tx, ty, dt, speed, direct) {
       if (wd > 1) { dx = (w.x - u.x) / wd; dy = (w.y - u.y) / wd; }
     } else { dx /= d; dy /= d; }
   } else { dx /= d; dy /= d; }
-  // Steer around rocks, trees and structures that sit on the straight line.
+  // Steer around towers and the core on the straight line. Walls need no steering: paths go around
+  // them and pushOut slides a unit along their surface.
   const look = Math.min(d, 220);
   const steer = (o, pad) => {
     if (o === u.attackTarget || o === u.target) return;
@@ -286,7 +328,6 @@ function moveToward(u, tx, ty, dt, speed, direct) {
     dx += px * k; dy += py * k;
     const n = Math.hypot(dx, dy); dx /= n; dy /= n;
   };
-  for (const o of SOLIDS) steer(o, 10);
   for (const s of G.structs) if (!s.dead) steer(s, 10);
   const step = Math.min(d, (speed || u.ms) * dt);
   u.x = clamp(u.x + dx * step, 40, W - 40);
@@ -303,10 +344,12 @@ function moveDir(u, vx, vy, dt) {
 }
 
 function pushOut(u) {
-  for (const o of SOLIDS) {
-    const dx = u.x - o.x, dy = u.y - o.y, min = u.r + o.r;
-    const d = Math.hypot(dx, dy);
-    if (d < min) { if (d < 0.01) { u.x += min; continue; } u.x = o.x + dx / d * min; u.y = o.y + dy / d * min; }
+  // Two passes settle a unit wedged where two segments meet.
+  for (let pass = 0; pass < 2; pass++) {
+    for (const g of segsNear(u.x, u.y)) {
+      const q = segGap(g, u.x, u.y), over = u.r - q.gap;
+      if (over > 0) { u.x += q.nx * over; u.y += q.ny * over; }
+    }
   }
   for (const s of G.structs) {
     if (s.dead) continue;
@@ -728,7 +771,7 @@ function updateDash(h, dt) {
   const step = Math.min(d.left, Math.hypot(d.vx, d.vy) * dt);
   const n = Math.hypot(d.vx, d.vy);
   const nx = h.x + d.vx / n * step, ny = h.y + d.vy / n * step;
-  for (const o of SOLIDS) if (Math.hypot(o.x - nx, o.y - ny) < o.r + h.r * 0.6) { h.dash = null; pushOut(h); return; }
+  if (wallGap(nx, ny) < h.r * 0.6) { h.dash = null; pushOut(h); return; }
   h.x = clamp(nx, 40, W - 40); h.y = clamp(ny, 40, H - 40);
   h.facing = Math.atan2(d.vy, d.vx);
   d.left -= step;
