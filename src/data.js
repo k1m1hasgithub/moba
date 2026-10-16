@@ -30,9 +30,10 @@ function makeLane(id, raw) {
   return { id, pts, cum, len: cum[cum.length - 1] };
 }
 const LANES = {
-  top: makeLane('top', [[430, 2860], [330, 2100], [330, 700], [480, 480], [700, 330], [2100, 330], [2860, 430]]),
+  // The side lanes run right along the map edge; mid crosses the river channel in the middle.
+  top: makeLane('top', [[330, 2900], [205, 2250], [195, 420], [270, 270], [420, 195], [2250, 205], [2900, 330]]),
   mid: makeLane('mid', [[640, 2960], [1800, 1800], [2960, 640]]),
-  bot: makeLane('bot', [[740, 3170], [1500, 3270], [2900, 3270], [3120, 3120], [3270, 2900], [3270, 1500], [3170, 740]]),
+  bot: makeLane('bot', [[700, 3270], [1350, 3395], [3180, 3405], [3330, 3330], [3405, 3180], [3395, 1350], [3270, 700]]),
 };
 const LANE_IDS = ['top', 'mid', 'bot'];
 
@@ -76,10 +77,15 @@ const STRUCTS = (() => {
     const off = 75;
     blue.push({ type: 'tower', lane: laneId, tier, x: p.x - p.dy * off, y: p.y + p.dx * off });
   };
-  place('top', 0.36, 'outer'); place('top', 0.18, 'inner');
-  place('mid', 0.30, 'outer'); place('mid', 0.15, 'inner');
-  place('bot', 0.36, 'outer'); place('bot', 0.18, 'inner');
-  place('top', 0.08, 'base'); place('mid', 0.06, 'base'); place('bot', 0.08, 'base');
+  // Towers go where the layout puts them (authoring grid), projected onto their lane. The side lanes
+  // mirror each other across the mid lane, so the bottom lane reuses the top lane's spots.
+  const at = (laneId, x, y) => laneProject(LANES[laneId], S(x), S(y)).s / LANES[laneId].len;
+  const side = { outer: at('top', 126, 711), inner: at('top', 171, 1629), base: at('top', 234, 2542) };
+  const mid = { outer: at('mid', 1485, 2025), inner: at('mid', 1102, 2362), base: at('mid', 787, 2790) };
+  place('top', side.outer, 'outer'); place('top', side.inner, 'inner');
+  place('mid', mid.outer, 'outer'); place('mid', mid.inner, 'inner');
+  place('bot', side.outer, 'outer'); place('bot', side.inner, 'inner');
+  place('top', side.base, 'base'); place('mid', mid.base, 'base'); place('bot', side.base, 'base');
   blue.push({ type: 'core', lane: null, tier: 'core', x: CORE_POS[0].x, y: CORE_POS[0].y });
   const red = blue.map(s => Object.assign({}, s, mirror(s)));
   return [blue, red];
@@ -102,16 +108,17 @@ const MONSTERS = {
   lizard: { name: 'Thorn Lizard', hp: 1300, ad: 32, r: 30, gold: 70, xp: 95, respawn: 60, first: 25 },
   crab: { name: 'Shell Crab', hp: 1150, ad: 28, r: 30, gold: 65, xp: 85, respawn: 60, first: 25 },
   wolf: { name: 'Dusk Wolf', hp: 1200, ad: 34, r: 30, gold: 65, xp: 90, respawn: 60, first: 25 },
-  // Both bosses share the river pit by the top lane: the Tidewarden holds it until the Lord arrives.
+  // The Tidewarden lives in the river pool by the bottom lane and stops returning when the Lord wakes
+  // in the pool by the top lane.
   turtle: { name: 'Tidewarden', hp: 6500, ad: 90, r: 62, gold: 120, xp: 220, boss: true, team: true, respawn: 120, first: 120, until: 480 },
   wyrm: { name: 'Lord', hp: 13000, ad: 150, r: 74, gold: 160, xp: 300, boss: true, team: true, buff: 'wyrm', respawn: 180, first: 480 },
 };
-// Camps on the blue half; red camps are mirrored copies. Both bosses share one river pit by the top lane.
+// Camps on the blue half; red camps are mirrored copies. Each boss has its own pool in the river.
 const CAMPS = (() => {
   const blue = [
-    { type: 'wisp', x: 900, y: 1600 }, { type: 'brute', x: 1500, y: 2650 },
-    { type: 'beetle', x: 700, y: 2300 }, { type: 'lizard', x: 1150, y: 2030 },
-    { type: 'wolf', x: 650, y: 1150 },
+    { type: 'wisp', x: 900, y: 1787 }, { type: 'brute', x: 1845, y: 2799 },
+    { type: 'beetle', x: 729, y: 1508 }, { type: 'wolf', x: 1341, y: 2781 },
+    { type: 'lizard', x: 2330, y: 3085 },
   ];
   const out = [];
   for (const c0 of blue) {
@@ -119,13 +126,24 @@ const CAMPS = (() => {
     out.push(Object.assign({ side: BLUE }, c));
     out.push(Object.assign({ side: RED }, c, mirror(c)));
   }
-  // River crabs on either side of the mid lane, each between two river bushes.
-  out.push({ type: 'crab', side: NEUTRAL, x: S(1480), y: S(1480) });
-  out.push({ type: 'crab', side: NEUTRAL, x: S(2120), y: S(2120) });
-  out.push({ type: 'turtle', side: NEUTRAL, x: S(1150), y: S(1150) });
-  out.push({ type: 'wyrm', side: NEUTRAL, x: S(1150), y: S(1150) });
+  out.push({ type: 'wyrm', side: NEUTRAL, x: S(1035), y: S(1035) });
+  out.push({ type: 'turtle', side: NEUTRAL, x: S(2565), y: S(2565) });
   return out;
 })();
+
+// The river: two round pools, one by each side lane, joined by a channel that the mid lane crosses.
+const RIVER = {
+  pools: [{ x: S(1090), y: S(1090), r: S(385) }, { x: S(2510), y: S(2510), r: S(395) }],
+  channel: [{ x: S(1250), y: S(1250) }, { x: S(2350), y: S(2350) }], half: S(150),
+};
+// Distance from (x, y) to the water's edge: negative in the water.
+function riverGap(x, y) {
+  let best = Infinity;
+  for (const p of RIVER.pools) best = Math.min(best, Math.hypot(x - p.x, y - p.y) - p.r);
+  const [a, b] = RIVER.channel, vx = b.x - a.x, vy = b.y - a.y;
+  const t = Math.max(0, Math.min(1, ((x - a.x) * vx + (y - a.y) * vy) / (vx * vx + vy * vy)));
+  return Math.min(best, Math.hypot(x - a.x - vx * t, y - a.y - vy * t) - RIVER.half);
+}
 
 // Rocks and tree clumps that block movement. Generated once, mirrored for symmetry.
 function mulberry32(a) {
@@ -137,36 +155,46 @@ function mulberry32(a) {
   };
 }
 // ---------------------------------------------------------------------------
-// Walls, rocks and trees. The map is laid out with connected walls instead of scattered props:
-// rock ridges along the inner edge of each lane and along the river bank, tree lines that split the
-// jungle and line the map edge. Walls are drawn as polylines (blue half, 3600-unit authoring grid) and
-// turned into a chain of overlapping solid circles; any piece that would block a lane, camp, tower,
-// base or the river is dropped, which leaves natural gaps to walk through. Mirrored for red.
+// Walls: rock islands that split the jungle into paths, bank rocks along the river and two walls
+// that guard the mid exit of each base. Each is a short polyline (blue half, 3600-unit authoring
+// grid) with a thickness `r` (game units), turned into a chain of overlapping solid pieces; pieces
+// that would block a lane, camp, tower, base or the water are dropped. Mirrored for red.
+// `bush` puts bushes along a side of the island: 1 or -1 by its direction, 2 for both.
 // ---------------------------------------------------------------------------
 const WALLS = [
-  // Inner edge of the left lane, rocks, with bushes on the lane side.
-  { kind: 'rock', bush: -1, pts: [[585, 760], [575, 1500], [585, 2250], [640, 2640]] },
-  // Inner edge of the bottom lane.
-  { kind: 'rock', bush: 1, pts: [[960, 3015], [1700, 3030], [2500, 3020], [2840, 2960]] },
-  // River bank on the upper jungle (gap at the boss pit) and the lower jungle.
-  { kind: 'rock', bush: 1, pts: [[560, 900], [900, 1240], [1250, 1590], [1560, 1900]] },
-  { kind: 'rock', bush: 1, pts: [[1960, 2300], [2300, 2640], [2640, 2980]] },
-  // Tree lines along the jungle side of the mid lane.
-  { kind: 'tree', bush: 1, pts: [[880, 2370], [1220, 2040], [1520, 1740]] },
-  { kind: 'tree', bush: -1, pts: [[1280, 2730], [1640, 2370], [1980, 2030]] },
-  // Tree lines that split each jungle into pockets around the camps.
-  { kind: 'tree', bush: 2, pts: [[860, 1380], [800, 1800], [930, 2100]] },
-  { kind: 'tree', bush: 2, pts: [[1800, 2800], [1900, 2560]] },
-  // Forest along the map edge, outside the lanes.
-  { kind: 'tree', bush: 0, pts: [[70, 700], [70, 1700], [70, 2700]] },
-  { kind: 'tree', bush: 0, pts: [[900, 3530], [1900, 3530], [2900, 3530]] },
+  // Islands along the inside of the top lane.
+  { kind: 'tree', r: 108, bush: 2, pts: [[279, 441], [441, 594]] },
+  { kind: 'rock', r: 132, bush: 2, pts: [[414, 846], [621, 1044]] },
+  { kind: 'rock', r: 144, bush: 2, pts: [[459, 1314], [558, 1724]] },
+  { kind: 'tree', r: 144, bush: 2, pts: [[522, 2012], [603, 2309]] },
+  // Islands along the inside of the bottom lane.
+  { kind: 'tree', r: 114, bush: 2, pts: [[1418, 2903], [1463, 3105]] },
+  { kind: 'rock', r: 102, bush: 2, pts: [[1562, 3177], [1949, 3200]] },
+  { kind: 'rock', r: 78, bush: 2, pts: [[2178, 3204], [2444, 3204]] },
+  { kind: 'tree', r: 90, bush: 2, pts: [[2687, 3213], [3096, 3168]] },
+  { kind: 'rock', r: 84, bush: 0, pts: [[2880, 3024], [3024, 3141]] },
+  // Islands between the side lanes and the mid lane.
+  { kind: 'rock', r: 120, bush: 2, pts: [[909, 2214], [1053, 2376]] },
+  { kind: 'rock', r: 120, bush: 2, pts: [[1269, 1854], [1413, 2079]] },
+  { kind: 'rock', r: 132, bush: 2, pts: [[1539, 2453], [1859, 2282]] },
+  { kind: 'rock', r: 108, bush: 2, pts: [[1238, 2646], [1440, 2624]] },
+  { kind: 'tree', r: 96, bush: 2, pts: [[1989, 2529], [2088, 2826]] },
+  { kind: 'rock', r: 120, bush: 2, pts: [[2259, 2844], [2511, 2979]] },
+  // Rocks on the river banks.
+  { kind: 'rock', r: 78, bush: 0, pts: [[752, 1134], [869, 1431]] },
+  { kind: 'rock', r: 78, bush: 0, pts: [[990, 1373], [1044, 1440]] },
+  { kind: 'rock', r: 90, bush: 0, pts: [[1337, 1562], [1566, 1791]] },
+  { kind: 'rock', r: 90, bush: 0, pts: [[1809, 2012], [2084, 2264]] },
+  // Walls in front of the base, either side of the mid exit.
+  { kind: 'rock', r: 52, bush: 0, pts: [[405, 2430], [788, 2655]] },
+  { kind: 'rock', r: 52, bush: 0, pts: [[968, 2813], [1215, 3240]] },
 ];
 const wallClear = (x, y, r) => {
-  for (const id of LANE_IDS) if (laneProject(LANES[id], x, y).d < r + 165) return false;
-  for (const c of CAMPS) if (Math.hypot(c.x - x, c.y - y) < r + (MONSTERS[c.type].boss ? 430 : 200)) return false;
+  for (const id of LANE_IDS) if (laneProject(LANES[id], x, y).d < r + 150) return false;
+  for (const c of CAMPS) if (Math.hypot(c.x - x, c.y - y) < r + (MONSTERS[c.type].boss ? 390 : 70)) return false;
   for (const f of FOUNTAIN) if (Math.hypot(f.x - x, f.y - y) < r + 600) return false;
-  for (const t of STRUCTS[0].concat(STRUCTS[1])) if (Math.hypot(t.x - x, t.y - y) < r + 200) return false;
-  if (Math.abs(x - y) / Math.SQRT2 < r + 150) return false; // keep the river open
+  for (const t of STRUCTS[0].concat(STRUCTS[1])) if (Math.hypot(t.x - x, t.y - y) < r + 90) return false;
+  if (riverGap(x, y) < -r * 0.3) return false; // bank rocks may dip into the water, no further
   return x > r + 10 && y < H - r - 10 && y - x > r;
 };
 // Points every `step` along a wall, with the wall direction at each point.
@@ -182,9 +210,9 @@ const OBSTACLES = (() => {
   const rnd = mulberry32(2024);
   const blue = [];
   WALLS.forEach((w, wi) => {
-    for (const p of wallSamples(w, w.kind === 'tree' ? 78 : 74)) {
-      const r = (w.kind === 'tree' ? 56 : 50) + rnd() * 14;
-      const j = (rnd() - 0.5) * 16, x = p.x - p.dy * j, y = p.y + p.dx * j;
+    for (const p of wallSamples(w, Math.max(50, w.r * 0.85))) {
+      const r = w.r * (0.9 + rnd() * 0.2);
+      const j = (rnd() - 0.5) * w.r * 0.25, x = p.x - p.dy * j, y = p.y + p.dx * j;
       if (wallClear(x, y, r)) blue.push({ x, y, r, kind: w.kind, wall: wi, seed: (rnd() * 1e6) | 0 });
     }
   });
@@ -228,11 +256,20 @@ const BUSHES = (() => {
       if (c === own) continue; // a river crab's own bush sits right beside it
       const d = Math.hypot(c.x - b.x, c.y - b.y), boss = MONSTERS[c.type].boss;
       // Pit-entrance bushes lie along the pit wall, so they only need to clear its rim.
-      if (boss && nearPit ? d < 370 + b.ry + 40 : d < b.rx + (boss ? 380 : 120)) return false;
+      if (boss && nearPit ? d < 370 + b.ry + 40 : d < (boss ? b.rx + 380 : b.rx * 0.7 + 60)) return false;
     }
     for (const f of FOUNTAIN) if (Math.hypot(f.x - b.x, f.y - b.y) < b.rx + 650) return false;
     // No bushes under towers or the core: the whole patch stays outside their attack range.
-    for (const t of STRUCTS[0].concat(STRUCTS[1])) if (Math.hypot(t.x - b.x, t.y - b.y) < b.rx + STRUCT_STATS[t.tier].range + 60) return false;
+    // Every point of the bush's edge stays outside tower range (with a little room to spare).
+    const c = Math.cos(b.ang), sn = Math.sin(b.ang);
+    for (const t of STRUCTS[0].concat(STRUCTS[1])) {
+      const reach = STRUCT_STATS[t.tier].range + 30;
+      if (Math.hypot(t.x - b.x, t.y - b.y) > b.rx + reach) continue;
+      for (let k = 0; k < 16; k++) {
+        const a = k / 16 * Math.PI * 2, ex = Math.cos(a) * b.rx, ey = Math.sin(a) * b.ry;
+        if (Math.hypot(b.x + ex * c - ey * sn - t.x, b.y + ex * sn + ey * c - t.y) < reach) return false;
+      }
+    }
     for (const id of LANE_IDS) if (laneProject(LANES[id], b.x, b.y).d < b.ry + 120) return false;
     const sp = own ? 10 : 70; // river bushes may sit closer to their neighbours
     for (const o of blue) { if (Math.hypot(o.x - b.x, o.y - b.y) < o.rx + b.rx + sp) return false; const m = mirror(o); if (Math.hypot(m.x - b.x, m.y - b.y) < o.rx + b.rx + sp) return false; }
@@ -241,36 +278,25 @@ const BUSHES = (() => {
   WALLS.forEach((w, wi) => {
     if (!w.bush) return;
     const samples = wallSamples(w, 60);
-    for (let i = 0; i < samples.length; i += 2) {
+    for (let i = 0; i < samples.length; i++) {
       const p = samples[i];
       // Only beside a stretch of wall that actually exists here.
       if (!OBSTACLES.some(o => o.wall === wi && Math.hypot(o.x - p.x, o.y - p.y) < 90)) continue;
       const s = 92 + rnd() * 22, rx = s * 1.45, ry = s * 0.6;
       // bush: 1 or -1 picks a side of the wall (by its direction), 2 tries both.
       for (const side of w.bush === 2 ? [1, -1] : [w.bush]) {
-        const off = 80 + ry, x = p.x - p.dy * off * side, y = p.y + p.dx * off * side;
+        const off = w.r * 1.15 + 30 + ry, x = p.x - p.dy * off * side, y = p.y + p.dx * off * side;
         const b = { x, y, r: rx, rx, ry, ang: Math.atan2(p.dy, p.dx), seed: (rnd() * 1e6) | 0 };
         if (ok(b)) blue.push(b);
       }
     }
   });
-  // River bushes: one on the bank beside each river crab (its mirror is the other one), and two at the
-  // jungle entrances of the boss pit, lying along the pit wall.
-  for (const c of CAMPS) {
-    if (c.type !== 'crab') continue;
-    const s = 100, b = { x: c.x - S(80), y: c.y + S(80), rx: s * 1.45, ry: s * 0.6, ang: Math.PI / 4, seed: (rnd() * 1e6) | 0 };
+  // A bush in each river pool, on the blue side of the boss pit (its mirror is on the red side).
+  for (const p of RIVER.pools) {
+    const sz = 96, ry = sz * 0.6, d = 370 + ry + 40;
+    const b = { x: p.x - d / Math.SQRT2, y: p.y + d / Math.SQRT2, rx: sz * 1.45, ry, ang: Math.PI / 4, seed: (rnd() * 1e6) | 0 };
     b.r = b.rx;
-    if (ok(b, false, c)) blue.push(b);
-  }
-  const pit = CAMPS.find(c => c.type === 'wyrm');
-  for (const side of [-1, 1]) {
-    // Try spots around the blue side of the pit wall, nearest the entrance first.
-    for (let a = 0.25; a <= 1.3; a += 0.15) {
-      const t = Math.PI * 0.75 + a * side, sz = 96, ry = sz * 0.6, d = 370 + ry + 50;
-      const b = { x: pit.x + Math.cos(t) * d, y: pit.y + Math.sin(t) * d, rx: sz * 1.45, ry, ang: t + Math.PI / 2, seed: (rnd() * 1e6) | 0 };
-      b.r = b.rx;
-      if (ok(b, true)) { blue.push(b); break; }
-    }
+    if (ok(b, true)) blue.push(b);
   }
   const out = [];
   // Mirroring across y = x turns an angle a into pi/2 - a.
@@ -575,7 +601,7 @@ const DIFFICULTY = {
 
 LF.data = {
   W, H, MAP, BLUE, RED, NEUTRAL, TAU, TEAMS, mirror, LANES, LANE_IDS, laneAt, laneProject,
-  FOUNTAIN, CORE_POS, STRUCTS, STRUCT_STATS, STRUCT_N, CORE_I, STRUCT_GUARDS, MONSTERS, CAMPS, OBSTACLES, WALL_RUNS, BUSHES, bushAt, ROLES, ROLE_INDEX,
+  FOUNTAIN, CORE_POS, RIVER, riverGap, STRUCTS, STRUCT_STATS, STRUCT_N, CORE_I, STRUCT_GUARDS, MONSTERS, CAMPS, OBSTACLES, WALL_RUNS, BUSHES, bushAt, ROLES, ROLE_INDEX,
   ITEMS, ITEM, ITEM_INDEX, STAT_LABEL, SPELLS, SPELL, SPELL_INDEX, ROLE_SPELL, REGEN, HEROES, HERO, HERO_INDEX, MINION, ULT_LEVEL, MAX_LEVEL, xpToNext, DIFFICULTY, mulberry32,
 };
 })(window.LF);

@@ -476,7 +476,7 @@ function drawSiege(ctx, team, t, walk, atk) {
 
 const BRUTE_LOOK = { skin: '#c4573a', main: '#6e2b1c', trim: '#f0a040', pants: '#3a1a12', head: 'horns', weapon: 'club', body: 'heavy', scale: 1.45, hair: '#3a1a12' };
 
-// The Lord: a towering armored dragon-beast that guards the top river pit.
+// The Lord: a towering armored dragon-beast that guards the river pool by the top lane.
 // Drawn standing upright, facing +x, feet at (0,0).
 function drawLord(ctx, t, pose, C) {
   const ARMOR = '#2b1d3d', PLATE = '#4a2f6e', PLATE_HI = '#6d48a3', BONE = '#ece0c4', GOLD = '#d9b65c', CORE = '#c77dff', EYE = '#ffb347';
@@ -882,11 +882,13 @@ function drawObstacle(ctx, o, t) {
     const blobs = [];
     const big = o.wall !== undefined ? 1.18 : 1;
     for (let i = 0; i < n; i++) blobs.push([(rnd() - 0.5) * o.r * 1.1 * big, -o.r * 0.9 - rnd() * o.r * 0.5, o.r * (0.5 + rnd() * 0.3) * big]);
-    for (const [bx, by, br] of blobs) { ctx.fillStyle = '#0b2410'; circle(ctx, bx, by + 2, br + 5.5); ctx.fill(); }
+    // Autumn canopies: crimson-orange or gold, picked by the tree's seed.
+    const leaves = o.seed % 3 ? ['#2a1006', '#64230e', '#9c3c16', '#cc6420'] : ['#2c2006', '#6c5010', '#a8801e', '#d6ae38'];
+    for (const [bx, by, br] of blobs) { ctx.fillStyle = leaves[0]; circle(ctx, bx, by + 2, br + 5.5); ctx.fill(); }
     const sway = Math.sin(t * 0.8 + o.seed) * 1.5;
-    for (const [bx, by, br] of blobs) { ctx.fillStyle = '#183a20'; circle(ctx, bx + sway, by + 4, br + 3); ctx.fill(); }
-    for (const [bx, by, br] of blobs) { ctx.fillStyle = '#245a2c'; circle(ctx, bx + sway, by, br); ctx.fill(); }
-    for (const [bx, by, br] of blobs) { ctx.fillStyle = '#2f7236'; circle(ctx, bx + sway - br * 0.25, by - br * 0.3, br * 0.55); ctx.fill(); }
+    for (const [bx, by, br] of blobs) { ctx.fillStyle = leaves[1]; circle(ctx, bx + sway, by + 4, br + 3); ctx.fill(); }
+    for (const [bx, by, br] of blobs) { ctx.fillStyle = leaves[2]; circle(ctx, bx + sway, by, br); ctx.fill(); }
+    for (const [bx, by, br] of blobs) { ctx.fillStyle = leaves[3]; circle(ctx, bx + sway - br * 0.25, by - br * 0.3, br * 0.55); ctx.fill(); }
   } else {
     drawRock(ctx, o, rnd);
   }
@@ -905,23 +907,23 @@ function drawWallBase(ctx, run, up) {
   ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   if (run.kind === 'tree') {
     ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = r * 2.9; wallPath(ctx, pts, 10, 12); ctx.stroke();
-    ctx.strokeStyle = '#102a14'; ctx.lineWidth = r * 2.6; wallPath(ctx, pts, 0, 0); ctx.stroke();
-    ctx.strokeStyle = '#163a1b'; ctx.lineWidth = r * 1.9; wallPath(ctx, pts, 0, 0); ctx.stroke();
+    ctx.strokeStyle = '#2a1a0a'; ctx.lineWidth = r * 2.6; wallPath(ctx, pts, 0, 0); ctx.stroke();
+    ctx.strokeStyle = '#3c2610'; ctx.lineWidth = r * 1.9; wallPath(ctx, pts, 0, 0); ctx.stroke();
     ctx.restore();
     return;
   }
   const ux = up.x, uy = up.y;
   ctx.strokeStyle = 'rgba(0,0,0,0.32)'; ctx.lineWidth = r * 2.3; wallPath(ctx, pts, 12, 14); ctx.stroke();
-  ctx.strokeStyle = '#25282e'; ctx.lineWidth = r * 2.15 + 5; wallPath(ctx, pts, 0, 0); ctx.stroke();
-  ctx.strokeStyle = '#4a4f58'; ctx.lineWidth = r * 2.15; wallPath(ctx, pts, 0, 0); ctx.stroke();
-  ctx.strokeStyle = '#646a74'; ctx.lineWidth = r * 1.6; wallPath(ctx, pts, ux * r * 0.22, uy * r * 0.22); ctx.stroke();
-  ctx.strokeStyle = '#7f8691'; ctx.lineWidth = r * 1.05; wallPath(ctx, pts, ux * r * 0.38, uy * r * 0.38); ctx.stroke();
-  ctx.strokeStyle = 'rgba(170,178,188,0.55)'; ctx.lineWidth = r * 0.35; wallPath(ctx, pts, ux * r * 0.55, uy * r * 0.55); ctx.stroke();
+  ctx.strokeStyle = '#3a2618'; ctx.lineWidth = r * 2.15 + 5; wallPath(ctx, pts, 0, 0); ctx.stroke();
+  ctx.strokeStyle = '#7a5038'; ctx.lineWidth = r * 2.15; wallPath(ctx, pts, 0, 0); ctx.stroke();
+  ctx.strokeStyle = '#996a4a'; ctx.lineWidth = r * 1.6; wallPath(ctx, pts, ux * r * 0.22, uy * r * 0.22); ctx.stroke();
+  ctx.strokeStyle = '#b8875e'; ctx.lineWidth = r * 1.05; wallPath(ctx, pts, ux * r * 0.38, uy * r * 0.38); ctx.stroke();
+  ctx.strokeStyle = 'rgba(240,206,160,0.5)'; ctx.lineWidth = r * 0.35; wallPath(ctx, pts, ux * r * 0.55, uy * r * 0.55); ctx.stroke();
   // Moss along the top and cracks down the sides.
   const rnd = D.mulberry32(pts[0].seed);
   for (const p of pts) {
-    if (rnd() < 0.55) { ctx.fillStyle = rnd() < 0.5 ? '#4f8a3a' : '#5f9c44'; ellipse(ctx, p.x + ux * r * 0.45 + (rnd() - 0.5) * r, p.y + uy * r * 0.45 + (rnd() - 0.5) * r * 0.4, r * (0.25 + rnd() * 0.2), r * 0.12, rnd() * Math.PI); ctx.fill(); }
-    ctx.strokeStyle = 'rgba(30,32,38,0.6)'; ctx.lineWidth = 2;
+    if (rnd() < 0.55) { ctx.fillStyle = rnd() < 0.5 ? '#a8862e' : '#c09a3a'; ellipse(ctx, p.x + ux * r * 0.45 + (rnd() - 0.5) * r, p.y + uy * r * 0.45 + (rnd() - 0.5) * r * 0.4, r * (0.25 + rnd() * 0.2), r * 0.12, rnd() * Math.PI); ctx.fill(); }
+    ctx.strokeStyle = 'rgba(52,30,18,0.6)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(p.x - ux * r * 0.1, p.y - uy * r * 0.1); ctx.lineTo(p.x - ux * r * 0.55 + (rnd() - 0.5) * 12, p.y - uy * r * 0.55 + (rnd() - 0.5) * 12); ctx.stroke();
   }
   ctx.restore();
@@ -951,26 +953,26 @@ function boulder(ctx, x, y, r, rnd, tint) {
   // cracks
   ctx.strokeStyle = shade(tint, -0.6); ctx.lineWidth = 1.6;
   ctx.beginPath(); ctx.moveTo(x - r * 0.2, y - r * 0.55); ctx.lineTo(x - r * 0.05, y - r * 0.3); ctx.lineTo(x - r * 0.25, y - r * 0.05); ctx.stroke();
-  // moss cap
-  ctx.fillStyle = '#4f8a3a';
+  // dry grass cap
+  ctx.fillStyle = '#a8862e';
   ellipse(ctx, x - r * 0.25, y - r * 0.78, r * 0.42, r * 0.16, -0.25); ctx.fill();
-  ctx.fillStyle = '#6aa848';
+  ctx.fillStyle = '#d0aa48';
   ellipse(ctx, x - r * 0.32, y - r * 0.84, r * 0.24, r * 0.08, -0.25); ctx.fill();
   ctx.restore();
   // outline
-  path(); ctx.strokeStyle = '#25282e'; ctx.lineWidth = 2.6; ctx.stroke();
+  path(); ctx.strokeStyle = '#3a2618'; ctx.lineWidth = 2.6; ctx.stroke();
 }
 function drawRock(ctx, o, rnd) {
   const r = o.r;
   if (o.wall !== undefined) {
     // A capstone on a rock ridge: the ridge itself is drawn by drawWallBase.
-    const tint = ['#7d8490', '#848a94', '#767d88'][o.seed % 3];
+    const tint = ['#b08462', '#a87a58', '#bc9070'][o.seed % 3];
     boulder(ctx, (rnd() - 0.5) * r * 0.3, -r * 0.35, r * (0.62 + rnd() * 0.2), rnd, tint);
     if (rnd() < 0.45) boulder(ctx, r * (rnd() < 0.5 ? -0.45 : 0.45), -r * 0.05, r * 0.32, rnd, shade(tint, -0.08));
     return;
   }
   ctx.fillStyle = 'rgba(0,0,0,0.32)'; ellipse(ctx, 8, 6, r * 1.15, r * 0.48); ctx.fill();
-  const tint = ['#7d8490', '#857c70', '#78828a'][(rnd() * 3) | 0];
+  const tint = ['#b08462', '#a87a58', '#bc9070'][(rnd() * 3) | 0];
   // a smaller stone behind, the main boulder, and one in front
   boulder(ctx, r * 0.55, -r * 0.05, r * 0.5, rnd, shade(tint, -0.08));
   boulder(ctx, -r * 0.08, 0, r * 0.85, rnd, tint);
@@ -979,9 +981,9 @@ function drawRock(ctx, o, rnd) {
   for (let i = 0; i < 4; i++) {
     const px = (rnd() - 0.5) * r * 1.9, py = r * (0.25 + rnd() * 0.2);
     ctx.fillStyle = shade(tint, -0.2); ellipse(ctx, px, py, 4 + rnd() * 4, 3 + rnd() * 2); ctx.fill();
-    ctx.strokeStyle = '#25282e'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.strokeStyle = '#3a2618'; ctx.lineWidth = 1; ctx.stroke();
   }
-  ctx.strokeStyle = '#3f7a34'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+  ctx.strokeStyle = '#a08430'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
   for (let i = 0; i < 6; i++) { const gx = r * (0.35 + rnd() * 0.5) * (i % 2 ? 1 : -1), gy = r * 0.3; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + (rnd() - 0.5) * 6, gy - 8 - rnd() * 8); ctx.stroke(); }
 }
 
@@ -1001,48 +1003,65 @@ function buildTerrain() {
   const nearLane = (x, y, d) => D.LANE_IDS.some(id => D.laneProject(D.LANES[id], x, y).d < d);
 
   // Deep jungle floor everywhere, brighter meadow along the lanes and river.
-  g.fillStyle = '#183320'; g.fillRect(0, 0, D.W, D.H);
-  for (const id of D.LANE_IDS) { strokeLane(D.LANES[id], 900, 'rgba(46,92,44,0.55)'); strokeLane(D.LANES[id], 620, 'rgba(66,122,54,0.55)'); }
-  g.strokeStyle = 'rgba(56,108,52,0.5)'; g.lineWidth = 760; g.beginPath(); g.moveTo(-100, -100); g.lineTo(D.W + 100, D.H + 100); g.stroke();
+  g.fillStyle = '#2b2614'; g.fillRect(0, 0, D.W, D.H);
+  for (const id of D.LANE_IDS) { strokeLane(D.LANES[id], 900, 'rgba(104,84,36,0.55)'); strokeLane(D.LANES[id], 620, 'rgba(138,110,48,0.55)'); }
+  // The river as a shape grown by `extra` around the water's edge: two pools and the channel.
+  const riverShape = (extra, col) => {
+    g.fillStyle = g.strokeStyle = col;
+    for (const p of D.RIVER.pools) { circle(g, p.x, p.y, Math.max(4, p.r + extra)); g.fill(); }
+    const [a, b] = D.RIVER.channel;
+    g.lineWidth = Math.max(4, (D.RIVER.half + extra) * 2); g.lineCap = 'round';
+    g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
+  };
+  // A random point in the water (gap < lo) or on the bank (lo < gap < hi).
+  const riverPoint = (lo, hi) => {
+    for (let k = 0; k < 60; k++) {
+      const x = D.RIVER.pools[0].x - 500 + rnd() * (D.RIVER.pools[1].x - D.RIVER.pools[0].x + 1000), y = x + (rnd() - 0.5) * 1400;
+      const gp = D.riverGap(x, y);
+      if (gp < hi && gp > lo) return { x, y };
+    }
+    return null;
+  };
+  riverShape(260, 'rgba(116,98,44,0.5)');
   for (let i = 0; i < 4200 * area; i++) {
     const x = rnd() * D.W, y = rnd() * D.H, r = 30 + rnd() * 120;
-    g.fillStyle = rnd() < 0.5 ? `rgba(90,150,70,${0.04 + rnd() * 0.06})` : `rgba(6,20,10,${0.06 + rnd() * 0.09})`;
+    g.fillStyle = rnd() < 0.5 ? `rgba(196,150,66,${0.04 + rnd() * 0.06})` : `rgba(24,14,6,${0.06 + rnd() * 0.09})`;
     circle(g, x, y, r); g.fill();
   }
   g.lineWidth = 2; g.lineCap = 'round';
   for (let i = 0; i < 26000 * area; i++) {
     const x = rnd() * D.W, y = rnd() * D.H, l = 6 + rnd() * 11;
-    g.strokeStyle = rnd() < 0.55 ? 'rgba(150,200,100,0.17)' : 'rgba(8,26,12,0.28)';
+    g.strokeStyle = rnd() < 0.55 ? 'rgba(226,182,92,0.17)' : 'rgba(30,18,8,0.28)';
     g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 6, y - l); g.stroke();
   }
   // Jungle undergrowth: ferns and leaf litter away from the lanes
   for (let i = 0; i < 1600 * area; i++) {
     const x = rnd() * D.W, y = rnd() * D.H;
-    if (nearLane(x, y, 330) || Math.abs(x - y) < 260) continue;
+    if (nearLane(x, y, 330) || D.riverGap(x, y) < 90) continue;
     g.save(); g.translate(x, y); g.rotate(rnd() * TAU);
-    g.fillStyle = rnd() < 0.5 ? 'rgba(30,70,34,0.85)' : 'rgba(40,88,40,0.8)';
+    g.fillStyle = rnd() < 0.5 ? 'rgba(112,64,24,0.85)' : 'rgba(140,86,30,0.8)';
     for (let k = 0; k < 5; k++) { g.rotate(TAU / 5); ellipse(g, 12, 0, 13, 4.5); g.fill(); }
     g.restore();
   }
 
   // River: sandy banks, turquoise water, rocks and lily pads
-  const riverLine = (w, col) => { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'butt'; g.beginPath(); g.moveTo(-100, -100); g.lineTo(D.W + 100, D.H + 100); g.stroke(); };
-  riverLine(420, 'rgba(176,160,112,0.55)'); riverLine(372, '#9b8d63');
+  riverShape(45, 'rgba(176,160,112,0.55)'); riverShape(21, '#9b8d63');
   for (let i = 0; i < 140 * area; i++) {
-    const t = rnd() * D.W, side = rnd() < 0.5 ? -1 : 1, off = side * (170 + rnd() * 30);
-    const x = t + off / Math.SQRT2, y = t - off / Math.SQRT2;
-    g.fillStyle = rnd() < 0.5 ? '#8a7d56' : '#b3a37a'; circle(g, x, y, 14 + rnd() * 26); g.fill();
+    const p = riverPoint(2, 40);
+    if (!p) continue;
+    g.fillStyle = rnd() < 0.5 ? '#8a7d56' : '#b3a37a'; circle(g, p.x, p.y, 14 + rnd() * 26); g.fill();
   }
-  riverLine(330, '#1b5566'); riverLine(280, '#226f82'); riverLine(200, '#2c8a9a'); riverLine(90, 'rgba(120,220,220,0.22)');
+  riverShape(0, '#1b5566'); riverShape(-25, '#226f82'); riverShape(-65, '#2c8a9a'); riverShape(-120, 'rgba(120,220,220,0.22)');
   g.strokeStyle = 'rgba(220,250,255,0.2)'; g.lineWidth = 3;
   for (let i = 0; i < 300 * area; i++) {
-    const t = rnd() * D.W, off = (rnd() - 0.5) * 240;
-    const x = t + off / Math.SQRT2, y = t - off / Math.SQRT2;
-    g.beginPath(); g.moveTo(x - 16, y + 4); g.quadraticCurveTo(x, y - 6, x + 16, y + 4); g.stroke();
+    const p = riverPoint(-1e9, -30);
+    if (!p) continue;
+    g.beginPath(); g.moveTo(p.x - 16, p.y + 4); g.quadraticCurveTo(p.x, p.y - 6, p.x + 16, p.y + 4); g.stroke();
   }
   for (let i = 0; i < 60 * area; i++) {
-    const t = rnd() * D.W, off = (rnd() - 0.5) * 230;
-    const x = t + off / Math.SQRT2, y = t - off / Math.SQRT2;
+    const p = riverPoint(-1e9, -40);
+    if (!p) continue;
+    const { x, y } = p;
     if (rnd() < 0.55) {
       const r = 10 + rnd() * 10, a0 = rnd() * TAU;
       g.fillStyle = '#3f8a3a'; g.beginPath(); g.moveTo(x, y); g.arc(x, y, r, a0 + 0.5, a0 + TAU - 0.1); g.closePath(); g.fill();
@@ -1091,6 +1110,18 @@ function buildTerrain() {
     }
   }
 
+  // Stone wall around the edge of the map, with posts along it.
+  g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 170; g.strokeRect(0, 0, D.W, D.H);
+  g.strokeStyle = '#3a2a1c'; g.lineWidth = 140; g.strokeRect(0, 0, D.W, D.H);
+  g.strokeStyle = '#7a5a40'; g.lineWidth = 100; g.strokeRect(0, 0, D.W, D.H);
+  g.strokeStyle = '#a07a56'; g.lineWidth = 30; g.strokeRect(36, 36, D.W - 72, D.H - 72);
+  for (let k = 160; k < D.W - 100; k += 320) {
+    for (const [x, y] of [[k, 30], [k, D.H - 30], [30, k], [D.W - 30, k]]) {
+      g.fillStyle = '#3a2a1c'; circle(g, x, y, 30); g.fill();
+      g.fillStyle = '#b8906a'; circle(g, x - 4, y - 4, 22); g.fill();
+    }
+  }
+
   // Boss pits: sunken stone arenas in the river
   for (const cp of D.CAMPS) {
     const boss = cp.type === 'wyrm' || cp.type === 'turtle';
@@ -1106,7 +1137,7 @@ function buildTerrain() {
       }
       continue;
     }
-    const R = 340, rune = cp.type === 'wyrm' ? '#b77dff' : '#5fe0d8';
+    const R = 300, rune = cp.type === 'wyrm' ? '#b77dff' : '#5fe0d8';
     g.fillStyle = 'rgba(0,0,0,0.35)'; circle(g, cp.x + 10, cp.y + 14, R + 34); g.fill();
     g.fillStyle = '#3c3a35'; circle(g, cp.x, cp.y, R + 30); g.fill();
     for (let i = 0; i < 28; i++) {
@@ -1239,10 +1270,10 @@ function bushSprites(b, flip) {
   g.save();
   smoothPath(g, pts, c0, c0); g.clip();
   const body = g.createRadialGradient(c0 - R * 0.2, c0 - b.ry * 0.4, 6, c0, c0, R);
-  body.addColorStop(0, '#3a8a3c'); body.addColorStop(0.6, '#25652d'); body.addColorStop(1, '#174a22');
+  body.addColorStop(0, '#c87a2a'); body.addColorStop(0.6, '#a25420'); body.addColorStop(1, '#6e3014');
   g.fillStyle = body; g.fillRect(0, 0, size, size);
   // Layered leaves: darker underneath, lighter on top, lit from the upper left.
-  const greens = ['#174822', '#1e5a28', '#267030', '#2f8236', '#3b963f', '#4daa48'];
+  const greens = ['#5c2410', '#7e3414', '#a04a1a', '#c0621e', '#d88428', '#eca63a'];
   const area = Math.PI * b.rx * b.ry;
   for (let layer = 0; layer < 3; layer++) {
     const count = area / (layer === 2 ? 900 : 620);
@@ -1252,7 +1283,7 @@ function bushSprites(b, flip) {
       const x = c0 + ex * Math.cos(a) - ey * Math.sin(a), y = c0 + ex * Math.sin(a) + ey * Math.cos(a);
       const lit = Math.max(0, Math.min(1, 0.5 - (x - c0) / R * 0.25 - (y - c0) / R * 0.45));
       const shade = Math.min(5, Math.floor(layer * 1.4 + lit * 2.4 + rnd() * 1.2));
-      leaf(g, x, y, 18 + rnd() * 14, 5 + rnd() * 4, rnd() * Math.PI, greens[shade], layer === 2 && rnd() < 0.5 ? 'rgba(10,40,16,0.35)' : null);
+      leaf(g, x, y, 18 + rnd() * 14, 5 + rnd() * 4, rnd() * Math.PI, greens[shade], layer === 2 && rnd() < 0.5 ? 'rgba(60,20,6,0.35)' : null);
     }
   }
   // A few flowers, like the meadow bushes of a MOBA map.
@@ -1266,13 +1297,13 @@ function bushSprites(b, flip) {
   }
   // Inner shade along the rim gives the patch depth.
   const rim = g.createRadialGradient(c0, c0, R * 0.55, c0, c0, R * 1.05);
-  rim.addColorStop(0, 'rgba(0,0,0,0)'); rim.addColorStop(1, 'rgba(4,24,10,0.35)');
+  rim.addColorStop(0, 'rgba(0,0,0,0)'); rim.addColorStop(1, 'rgba(40,12,2,0.35)');
   g.fillStyle = rim; g.fillRect(0, 0, size, size);
   g.restore();
   // Crisp outline with a light upper edge.
-  smoothPath(g, pts, c0, c0); g.strokeStyle = '#0d2c14'; g.lineWidth = 4; g.stroke();
+  smoothPath(g, pts, c0, c0); g.strokeStyle = '#3a1404'; g.lineWidth = 4; g.stroke();
   g.save(); smoothPath(g, pts, c0, c0 + 2.5); g.clip();
-  smoothPath(g, pts, c0, c0); g.strokeStyle = 'rgba(150,220,110,0.45)'; g.lineWidth = 2.5; g.stroke();
+  smoothPath(g, pts, c0, c0); g.strokeStyle = 'rgba(255,206,120,0.45)'; g.lineWidth = 2.5; g.stroke();
   g.restore();
   // ---- top fringe: tall grass and broad leaves along the near edge ----
   const top = document.createElement('canvas'); top.width = top.height = size;
@@ -1285,11 +1316,11 @@ function bushSprites(b, flip) {
       const x = c0 + px * (0.88 + rnd() * 0.1) + (rnd() - 0.5) * 16, y = c0 + py * (0.88 + rnd() * 0.1);
       const h = 18 + rnd() * 24, lean = (rnd() - 0.5) * 14;
       const gr = t.createLinearGradient(x, y, x, y - h);
-      gr.addColorStop(0, '#1d5226'); gr.addColorStop(1, rnd() < 0.5 ? '#4a9c44' : '#5fb150');
+      gr.addColorStop(0, '#6a2c0e'); gr.addColorStop(1, rnd() < 0.5 ? '#d08830' : '#e6aa44');
       t.strokeStyle = gr; t.lineWidth = 3 + rnd() * 2.5;
       t.beginPath(); t.moveTo(x, y); t.quadraticCurveTo(x + lean * 0.3, y - h * 0.6, x + lean, y - h); t.stroke();
     }
-    if (rnd() < 0.55) leaf(t, c0 + px * 0.9, c0 + py * 0.9 - 8, 26 + rnd() * 10, 7, -Math.PI / 2 + (rnd() - 0.5) * 1.2, rnd() < 0.5 ? '#2f8236' : '#3b963f', 'rgba(10,40,16,0.4)');
+    if (rnd() < 0.55) leaf(t, c0 + px * 0.9, c0 + py * 0.9 - 8, 26 + rnd() * 10, 7, -Math.PI / 2 + (rnd() - 0.5) * 1.2, rnd() < 0.5 ? '#c0621e' : '#d88428', 'rgba(60,20,6,0.4)');
   }
   s = { base, top, size };
   bushCache.set(key, s);

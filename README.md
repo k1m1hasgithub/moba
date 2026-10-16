@@ -2,14 +2,14 @@
 
 **A 5v5 MOBA that runs in your browser.** Pick a hero, push three lanes, fight over the river bosses and break the enemy core. Play against bots or with friends, on a computer or a phone.
 
-![A Lanefall match: heroes fighting beside a rock wall, a tree line and bushes, with the HUD around the edges](docs/screenshots/match.jpg)
+![A Lanefall match: heroes fighting in the river beside sandstone islands, autumn trees and a bush, with the HUD around the edges](docs/screenshots/match.jpg)
 
 **[Play on claude.ai](https://claude.ai/artifact/W5SQpmvpnDTZJgfx54qh65)** (invite-only) · **[Request access](https://claude.ai/artifact/V3HMr9bwRnFTQDzQ8YCSay)** · **[New player guide](https://claude.ai/artifact/14W4sJeNrLJBvvae57xiGU)**
 
 ## Features
 
 - **10 heroes in 5 roles** (EXP, Jungle, Mid, Gold, Roam), each with a passive, two skills and an ultimate.
-- **A full map:** three lanes with three towers each, two jungles split by rock ridges and tree lines, river crabs by the mid lane, bushes to ambush from, and a river pit shared by the Tidewarden and the Lord.
+- **An autumn battlefield:** three lanes with three towers each, jungles of sandstone islands and autumn trees, amber bushes to ambush from, and a river with a boss pool at each end.
 - **Item crafting** in three tiers, with your own saved build per hero and a buy prompt that walks you through it.
 - **Battle spells:** pick one of seven (Blink, Smite, Reap, Cleanse, Sprint, Aegis, Stonegaze) before each match. Every hero also has Regen and Recall.
 - **Bots that play as a team:** they farm, gank, dodge skillshots and fight over bosses. Three difficulty levels.
@@ -35,8 +35,8 @@ Use `node server.js 3000` for another port. Host `server.js` on any Node server 
 Destroy the enemy **core**. Each lane has three towers (outer, inner and base) that must fall in that order, and the core can't be hurt until a base tower falls.
 
 - **Minions** march down every lane every 25 seconds. Last-hit them for gold.
-- **The jungle** has two buff camps (the Azure Wisp for shorter cooldowns, the Ember Brute for burning attacks) and three small camps. A **river crab** sits in the river on each side of the mid lane, between two bushes.
-- **The river pit** by the top lane holds the **Tidewarden** from 2:00 (gold for the whole team), then the **Lord** from 8:00 (gold and more damage for the whole team).
+- **The jungle** has two buff camps (the Azure Wisp for shorter cooldowns, the Ember Brute for burning attacks) and three small camps, tucked between rock islands.
+- **The river** has two pools: the **Tidewarden** by the bottom lane from 2:00 (gold for the whole team) and the **Lord** by the top lane from 8:00 (gold and more damage for the whole team).
 - **Bushes** hide you from enemies until one of them steps into the same bush or you deal damage.
 
 ## Controls

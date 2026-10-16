@@ -22,7 +22,7 @@ function init(c, m) {
   miniTerrain.width = miniTerrain.height = 360;
   const g = miniTerrain.getContext('2d');
   g.drawImage(terrain, 0, 0, 360, 360);
-  g.fillStyle = '#123018';
+  g.fillStyle = '#8a4a18';
   for (const b of D.BUSHES) { g.beginPath(); g.ellipse(b.x / D.W * 360, b.y / D.H * 360, b.rx / D.W * 360, b.ry / D.W * 360, b.ang, 0, Math.PI * 2); g.fill(); }
   resize();
 }
