@@ -37,16 +37,18 @@ function createGame(cfg) {
       const st = D.STRUCT_STATS[s.tier];
       const u = unit({
         kind: s.type, team, x: s.x, y: s.y, r: st.r, hp: st.hp, maxHp: st.hp, ad: st.ad, range: st.range,
-        as: st.as, armor: 40, lane: s.lane, tier: s.tier, idx: team * 7 + i, ranged: true, streak: 0, lastTarget: null,
+        as: st.as, armor: 40, lane: s.lane, tier: s.tier, idx: team * D.STRUCT_N + i, ranged: true, streak: 0, lastTarget: null,
         vis: 'tower', projSpeed: 1000,
       });
       G.structs.push(u); G.units.push(u);
       return u;
     });
-    // Outer guards inner; the core opens once any inner tower falls.
-    for (let i = 0; i < 3; i++) list[i * 2 + 1].guards = [list[i * 2]];
-    list[6].guards = [list[1], list[3], list[5]];
-    list[6].guardAny = true;
+    // Outer guards inner, inner guards the lane's base tower, and the core opens once any base tower falls.
+    D.STRUCT_GUARDS.forEach((g, i) => {
+      if (!g) return;
+      list[i].guards = (g.any || g).map(j => list[j]);
+      list[i].guardAny = !!g.any;
+    });
   }
   D.CAMPS.forEach((c, i) => {
     const def = D.MONSTERS[c.type];
@@ -883,7 +885,7 @@ function spawnWave() {
   const types = ['melee', 'melee', 'caster', 'caster'];
   if (G.wave % 3 === 0) types.push('siege');
   for (const team of [BLUE, RED]) {
-    const core = G.structs[team * 7 + 6];
+    const core = G.structs[team * D.STRUCT_N + D.CORE_I];
     if (core.dead) continue;
     for (const laneId of D.LANE_IDS) {
       const lane = D.LANES[laneId];
@@ -934,7 +936,7 @@ function updateMinion(m, dt) {
   const lane = D.LANES[m.lane];
   const dir = m.team === BLUE ? 1 : -1;
   let wp = lane.pts[m.wp];
-  if (!wp) { const c = G.structs[(1 - m.team) * 7 + 6]; moveToward(m, c.x, c.y, dt); return; }
+  if (!wp) { const c = G.structs[(1 - m.team) * D.STRUCT_N + D.CORE_I]; moveToward(m, c.x, c.y, dt); return; }
   const prev = lane.pts[m.wp - dir] || wp;
   const segLen = Math.hypot(wp.x - prev.x, wp.y - prev.y) || 1;
   const px = -(wp.y - prev.y) / segLen, py = (wp.x - prev.x) / segLen;

@@ -327,7 +327,8 @@ function jungle(h, G, enemies, diff) {
   const ai = h.ai;
   let camp = ai.camp && !ai.camp.dead && !ai.camp.resetting ? ai.camp : null;
   if (!camp) {
-    const mine = G.monsters.filter(m => !m.dead && !m.boss && m.side === h.team && !m.resetting);
+    // Own camps, plus the river crabs that either jungler can take.
+    const mine = G.monsters.filter(m => !m.dead && !m.boss && (m.side === h.team || m.side === D.NEUTRAL) && !m.resetting);
     if (mine.length) {
       mine.sort((a, b) => (dist(a, h) - (D.MONSTERS[a.mtype].buff ? 500 : 0)) - (dist(b, h) - (D.MONSTERS[b.mtype].buff ? 500 : 0)));
       camp = mine[0];

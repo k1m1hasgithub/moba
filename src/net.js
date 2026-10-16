@@ -347,7 +347,7 @@ function createMirror(slots, mySeat) {
   for (const team of [0, 1]) {
     D.STRUCTS[team].forEach((s, i) => {
       const st = D.STRUCT_STATS[s.tier];
-      V.structs.push({ kind: s.type, id: 3000 + team * 7 + i, team, idx: team * 7 + i, x: s.x, y: s.y, r: st.r, hp: st.hp, maxHp: st.hp, range: st.range, tier: s.tier, lane: s.lane, dead: false, target: null, targetSeat: -1, guarded: false });
+      V.structs.push({ kind: s.type, id: 3000 + team * D.STRUCT_N + i, team, idx: team * D.STRUCT_N + i, x: s.x, y: s.y, r: st.r, hp: st.hp, maxHp: st.hp, range: st.range, tier: s.tier, lane: s.lane, dead: false, target: null, targetSeat: -1, guarded: false });
     });
   }
   D.CAMPS.forEach((c, i) => {
@@ -396,10 +396,11 @@ function applyMain(V, g) {
   });
   // Guard state, mirrored from the sim rules.
   for (const team of [0, 1]) {
-    const L = V.structs.slice(team * 7, team * 7 + 7);
-    for (let i = 0; i < 3; i++) L[i * 2 + 1].guarded = !L[i * 2].dead && !L[i * 2 + 1].dead;
-    L[6].guarded = !L[6].dead && !(L[1].dead || L[3].dead || L[5].dead);
-    for (let i = 0; i < 3; i++) L[i * 2].guarded = false;
+    const L = V.structs.slice(team * D.STRUCT_N, (team + 1) * D.STRUCT_N);
+    D.STRUCT_GUARDS.forEach((g, i) => {
+      const open = !g || (g.any ? g.any.some(j => L[j].dead) : g.every(j => L[j].dead));
+      L[i].guarded = !L[i].dead && !open;
+    });
   }
   V.zones = g.z.map(a => ({ x: a[0], y: a[1], r: a[2], vis: VIS[a[3]], team: a[4], t: a[5] / 10, kind: a[7] ? 'zone' : 'circle', delay: a[6] / 10, dur: a[6] / 10 }));
   for (const a of g.e) {

@@ -9,7 +9,7 @@
 ## Features
 
 - **10 heroes in 5 roles** (EXP, Jungle, Mid, Gold, Roam), each with a passive, two skills and an ultimate.
-- **A full map:** three lanes with towers, two jungles split by rock ridges and tree lines, bushes to ambush from, and a river pit shared by the Tidewarden and the Lord.
+- **A full map:** three lanes with three towers each, two jungles split by rock ridges and tree lines, river crabs by the mid lane, bushes to ambush from, and a river pit shared by the Tidewarden and the Lord.
 - **Item crafting** in three tiers, with your own saved build per hero and a buy prompt that walks you through it.
 - **Battle spells:** pick one of seven (Blink, Smite, Reap, Cleanse, Sprint, Aegis, Stonegaze) before each match. Every hero also has Regen and Recall.
 - **Bots that play as a team:** they farm, gank, dodge skillshots and fight over bosses. Three difficulty levels.
@@ -32,10 +32,10 @@ Use `node server.js 3000` for another port. Host `server.js` on any Node server 
 
 ## How to win
 
-Destroy the enemy **core**. First break the outer and inner tower in at least one lane: inner towers can't be hurt while their outer tower stands, and the core can't be hurt until an inner tower falls.
+Destroy the enemy **core**. Each lane has three towers (outer, inner and base) that must fall in that order, and the core can't be hurt until a base tower falls.
 
 - **Minions** march down every lane every 25 seconds. Last-hit them for gold.
-- **The jungle** has two buff camps (the Azure Wisp for shorter cooldowns, the Ember Brute for burning attacks) and four small camps.
+- **The jungle** has two buff camps (the Azure Wisp for shorter cooldowns, the Ember Brute for burning attacks) and three small camps. A **river crab** sits in the river on each side of the mid lane, between two bushes.
 - **The river pit** by the top lane holds the **Tidewarden** from 2:00 (gold for the whole team), then the **Lord** from 8:00 (gold and more damage for the whole team).
 - **Bushes** hide you from enemies until one of them steps into the same bush or you deal damage.
 
